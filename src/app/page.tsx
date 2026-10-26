@@ -2,7 +2,7 @@ export default function Home() {
   return (
     <main>
       <p className="eyebrow">COMMUNITY</p>
-      <h1>우리 커뮤니티의 시작</h1>
+      <h1>우리 배구 커뮤니티의 시작</h1>
       <p>Next.js · TypeScript · MongoDB 기반의 초기 환경입니다.</p>
       <section aria-labelledby="planned-features">
         <h2 id="planned-features">다음에 만들 공간</h2>
