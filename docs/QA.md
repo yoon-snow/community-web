@@ -2,7 +2,7 @@
 
 ## Environment
 
-Local Next.js 16.4.3 / Node 24. Source reference read through Google Drive. No production Supabase/Google OAuth/Push integration or real-data migration was verified. The existing GitHub main → Vercel community-web connection and production domain were confirmed on 2026-11-02; unauthenticated access redirects to Vercel login. Local checks and remote deployment status are tracked separately.
+Local Next.js 16.4.3 / Node 24. Source reference read through Google Drive. No production Supabase/Google OAuth/Push integration or real-data migration was verified. The existing GitHub main → Vercel community-web connection and production domain were confirmed on 2026-11-02; unauthenticated access redirects to Vercel login. Local checks and remote deployment status are tracked separately. Commit 91d81b1 reached GitHub main; Vercel rejected the initial five-minute cron configuration and linked its Hobby cron-pricing limits. Configuration was corrected to daily 04:00 UTC (13:00 KST); this plan has up-to-59-minute scheduling jitter. Frequent retry/future-scheduled emergency Push needs a separately configured compatible scheduler. Application-triggered Push paths are retained.
 
 ## Automated verification
 

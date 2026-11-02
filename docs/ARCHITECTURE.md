@@ -76,7 +76,7 @@ Existing GitHub main → Vercel community-web hosting was verified on 2026-11-02
 
 ## Notifications / deployment
 
-Transactional DB triggers create recipient-specific inbox entries and outbox records. Only admins get applications/13:00 roster; emergency notices go to active members. Cron 04:00 UTC = 13:00 KST. Uniqueness on event/recipient/kind prevents duplicate daily rosters. Web Push outbox retries are bounded; expired subscriptions removed. Service worker never caches API, authenticated HTML or private media. Vercel HTTPS hosting, Supabase managed DB/Auth/Storage, environment secrets. Production cannot accept public applications until configured; no mock success.
+Transactional DB triggers create recipient-specific inbox entries and outbox records. Only admins get applications/13:00 roster; emergency notices go to active members. Cron 04:00 UTC = 13:00 KST; the connected Hobby plan runs once/day with possible up-to-59-minute jitter. Fine-grained retries and future-scheduled emergency Push require a compatible external scheduler or plan; direct application/announcement-triggered delivery remains implemented. Uniqueness on event/recipient/kind prevents duplicate daily rosters. Web Push outbox retries are bounded; expired subscriptions removed. Service worker never caches API, authenticated HTML or private media. Vercel HTTPS hosting, Supabase managed DB/Auth/Storage, environment secrets. Production cannot accept public applications until configured; no mock success.
 
 ## Migration
 

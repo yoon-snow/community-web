@@ -234,7 +234,7 @@ E2E는 개발 미리보기와 DB 미설정 셸에 대해 동작합니다. 로컬
 2. 기존 Vercel `community-web` 프로젝트와 GitHub `main` 연결을 사용합니다. Framework Next.js, Node 24.x, Build `npm run build`, Output 기본값과 프로젝트 루트를 확인합니다. 연결된 프로젝트를 중복 생성하지 않습니다.
 3. Preview에는 개발 Supabase, Production에는 운영 Supabase 환경변수를 각각 등록합니다. `.env.local`을 업로드하거나 저장소에 올리지 않습니다.
 4. 생성된 실제 Vercel HTTPS 도메인을 `APP_URL`과 Supabase 허용 redirect에 등록하고 재배포합니다. 앱 아이콘·manifest·service worker를 확인합니다.
-5. Cron을 지원하는 플랜/외부 스케줄러를 연결합니다. Push 공개·비밀 키 일치와 `CRON_SECRET`을 확인합니다.
+5. 현재 Vercel 플랜의 하루 1회 제한에 맞춰 `vercel.json`은 매일 04:00 UTC(13:00 KST) Cron입니다. Hobby는 13:00~13:59 사이 실행될 수 있어 정각을 보장하지 않습니다. 5분 단위 재시도나 예약 긴급공지의 즉시 푸시는 세밀한 주기를 지원하는 스케줄러를 별도 연결해야 합니다. 신청 직후 관리자 알림과 공지 작성 직후 발송 경로는 그대로 유지됩니다. Push 키와 `CRON_SECRET`을 설정합니다. 제한은 [Vercel 공식 안내](https://vercel.com/docs/cron-jobs/usage-and-pricing)를 참고합니다.
 6. `docs/QA.md`의 실계정·실기기 체크를 수행하고 기존 데이터 Import는 백업된 스테이징에서 검증한 후 Production에 확정합니다.
 7. 커스텀 도메인은 Vercel Project → Settings → Domains에서 소유 도메인을 추가하고 안내된 DNS를 설정합니다. 변경 후 APP_URL, Supabase Site/Redirect URL, Google 허용 origin을 함께 갱신합니다.
 
