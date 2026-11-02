@@ -1,4 +1,3 @@
-# 회원
+# Authentication
 
-향후 회원가입·로그인 UI와 관련 서버 코드를 둘 자리입니다. 인증·세션·사용자 모델은 아직 구현하지 않았습니다.
-브라우저 코드에서 DB 모듈을 가져오지 마세요. 서버 코드는 `import "server-only"`로 경계를 지정합니다.
+Google OAuth routes: `src/app/auth/`. Request-scoped verified Supabase SSR: `src/lib/supabase/server.ts` and `src/proxy.ts`. Approval/role checks and RLS are in `supabase/migrations/`. See root README for provider setup and manual first-admin bootstrap. A successful OAuth login does not grant membership.

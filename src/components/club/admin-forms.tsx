@@ -1,0 +1,443 @@
+"use client";
+
+import { useState } from "react";
+
+import {
+  eventKinds,
+  formatDate,
+  formatTime,
+  seoulDate,
+  type ClubRow,
+  type ClubEvent,
+} from "@/lib/domain";
+
+import {
+  useApp,
+  api,
+  Modal,
+  SaveForm,
+  Field,
+  useResource,
+  Resource,
+} from "./core";
+
+export function EventEditor({
+  event,
+  close,
+}: {
+  event?: ClubRow;
+  close: () => void;
+}) {
+  const { mutate } = useApp();
+  const [urgent, setUrgent] = useState(Boolean(event?.is_emergency));
+  const local = (s: string) => {
+    const date = new Date(s);
+    return `${seoulDate(date)}T${formatTime(s)}`;
+  };
+  return (
+    <Modal title={event ? "운동 일정 수정" : "새 운동 일정"} close={close}>
+      <SaveForm
+        onSubmit={async (f) => {
+          await mutate(
+            "admin/events",
+            {
+              ...(event ? { id: event.id } : {}),
+              title: f.get("title"),
+              starts_at: new Date(`${f.get("starts_at")}+09:00`).toISOString(),
+              ends_at: new Date(`${f.get("ends_at")}+09:00`).toISOString(),
+              location: f.get("location"),
+              kind: f.get("kind"),
+              description: f.get("description"),
+              guests_open: f.has("guests_open"),
+              is_emergency: urgent,
+              change_reason: f.get("change_reason") || "",
+              guest_fee: Number(f.get("guest_fee")),
+              status: f.get("status"),
+            },
+            event ? "PATCH" : "POST",
+          );
+          close();
+        }}
+      >
+        <Field
+          label="일정 이름"
+          name="title"
+          value={event?.title}
+          required
+          maxLength={150}
+        />
+        <Field
+          label="시작 · 한국 시간"
+          name="starts_at"
+          type="datetime-local"
+          value={event ? local(event.starts_at) : undefined}
+          required
+        />
+        <Field
+          label="종료 · 한국 시간"
+          name="ends_at"
+          type="datetime-local"
+          value={event ? local(event.ends_at) : undefined}
+          required
+        />
+        <Field label="장소" name="location" value={event?.location} required />
+        <Field label="종류" name="kind" value={event?.kind || "game"}>
+          {Object.entries(eventKinds).map(([v, l]) => (
+            <option value={v} key={v}>
+              {l}
+            </option>
+          ))}
+        </Field>
+        <Field
+          label="설명"
+          name="description"
+          type="textarea"
+          value={event?.description}
+        />
+        <Field
+          label="게스트비"
+          name="guest_fee"
+          type="number"
+          value={event?.guest_fee ?? 5000}
+          min={0}
+          required
+        />
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            name="guests_open"
+            defaultChecked={event?.guests_open}
+          />
+          <span>게스트 신청 허용</span>
+        </label>
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={urgent}
+            onChange={(e) => setUrgent(e.target.checked)}
+          />
+          <span>긴급 변경 · 캘린더에 빨간색으로 표시</span>
+        </label>
+        {urgent && (
+          <Field
+            label="긴급 변경 안내"
+            name="change_reason"
+            value={event?.change_reason}
+            type="textarea"
+            required
+            placeholder="체육관 또는 시간 변경 내용을 입력해주세요."
+          />
+        )}
+        <Field label="상태" name="status" value={event?.status || "scheduled"}>
+          {[
+            { value: "scheduled", label: "예정" },
+            { value: "completed", label: "완료" },
+            { value: "cancelled", label: "취소" },
+          ].map((i) => (
+            <option value={i.value} key={i.value}>
+              {i.label}
+            </option>
+          ))}
+        </Field>
+      </SaveForm>
+      {event && <DeleteButton resource="events" id={event.id} done={close} />}
+    </Modal>
+  );
+}
+
+export function DeleteButton({
+  resource,
+  id,
+  done,
+}: {
+  resource: string;
+  id: string;
+  done: () => void;
+}) {
+  const { mutate, toast } = useApp();
+  return (
+    <button
+      className="text-button danger-text"
+      onClick={async () => {
+        if (
+          !window.confirm(
+            "삭제하시겠습니까? 일정과 공지는 기존 기록 보존을 위해 숨김 처리됩니다.",
+          )
+        )
+          return;
+        try {
+          await mutate("admin/delete", { resource, id });
+          done();
+        } catch (e) {
+          toast((e as Error).message);
+        }
+      }}
+    >
+      삭제하기
+    </button>
+  );
+}
+
+export function NoticeEditor({
+  notice: n,
+  close,
+}: {
+  notice?: ClubRow;
+  close: () => void;
+}) {
+  const { mutate } = useApp();
+  const history = useResource(n ? `admin/notices/${n.id}/versions` : null);
+  return (
+    <Modal title={n ? "공지 수정" : "새 공지"} close={close}>
+      <SaveForm
+        onSubmit={async (f) => {
+          await mutate(
+            "admin/notices",
+            {
+              ...(n ? { id: n.id } : {}),
+              title: f.get("title"),
+              content: f.get("content"),
+              kind: f.get("kind"),
+              audience: f.get("audience"),
+              starts_at: f.get("starts_at")
+                ? new Date(`${f.get("starts_at")}+09:00`).toISOString()
+                : new Date().toISOString(),
+              ends_at: f.get("ends_at")
+                ? new Date(`${f.get("ends_at")}+09:00`).toISOString()
+                : null,
+            },
+            n ? "PATCH" : "POST",
+          );
+          close();
+        }}
+      >
+        <Field label="제목" name="title" value={n?.title} required />
+        <Field
+          label="내용"
+          name="content"
+          value={n?.content}
+          type="textarea"
+          required
+          rows={7}
+        />
+        <Field label="유형" name="kind" value={n?.kind || "general"}>
+          {[
+            { value: "general", label: "일반 공지" },
+            { value: "required", label: "필독" },
+            { value: "emergency", label: "긴급공지 · 회원 알림" },
+            { value: "event", label: "이벤트" },
+          ].map((i) => (
+            <option key={i.value} value={i.value}>
+              {i.label}
+            </option>
+          ))}
+        </Field>
+        <Field
+          label="공개 대상"
+          name="audience"
+          value={n?.audience || "public"}
+        >
+          {[
+            { value: "public", label: "전체 공개" },
+            { value: "member", label: "회원" },
+            { value: "admin", label: "운영진" },
+          ].map((i) => (
+            <option key={i.value} value={i.value}>
+              {i.label}
+            </option>
+          ))}
+        </Field>
+        <Field
+          label="게시 시작 · 한국 시간 (비우면 즉시)"
+          name="starts_at"
+          type="datetime-local"
+          value={
+            n?.starts_at
+              ? `${seoulDate(n.starts_at)}T${formatTime(n.starts_at)}`
+              : undefined
+          }
+        />
+        <Field
+          label="게시 종료 · 한국 시간 (선택)"
+          name="ends_at"
+          type="datetime-local"
+          value={
+            n?.ends_at
+              ? `${seoulDate(n.ends_at)}T${formatTime(n.ends_at)}`
+              : undefined
+          }
+        />
+      </SaveForm>
+      {n && (
+        <details className="prose">
+          <summary>공지 수정 이력 · 현재 v{n.version || 1}</summary>
+          <Resource resource={history}>
+            {(rows) =>
+              rows.map((v: ClubRow) => (
+                <details key={v.version}>
+                  <summary>
+                    v{v.version} · {formatDate(v.recorded_at)}
+                    {v.deleted_at ? " · 삭제됨" : ""}
+                  </summary>
+                  <h3>{v.title}</h3>
+                  <p>{v.content}</p>
+                </details>
+              ))
+            }
+          </Resource>
+        </details>
+      )}
+      {n && <DeleteButton resource="announcements" id={n.id} done={close} />}
+    </Modal>
+  );
+}
+
+export function VideoEditor({
+  video: v,
+  close,
+}: {
+  video?: ClubRow;
+  close: () => void;
+}) {
+  const { boot, mutate, toast } = useApp();
+  const [url, setUrl] = useState(v?.url || "");
+  const [title, setTitle] = useState(v?.title || "");
+  const [meta, setMeta] = useState(false);
+  return (
+    <Modal title={v ? "영상 수정" : "영상 · 재생목록 등록"} close={close}>
+      <SaveForm
+        onSubmit={async (f) => {
+          await mutate(
+            "admin/videos",
+            {
+              ...(v ? { id: v.id } : {}),
+              title,
+              description: f.get("description"),
+              url,
+              filmed_on: f.get("filmed_on"),
+              kind: f.get("kind"),
+              event_id: f.get("event_id") || null,
+              visibility: f.get("visibility"),
+            },
+            v ? "PATCH" : "POST",
+          );
+          close();
+        }}
+      >
+        <label className="field">
+          <span>YouTube URL *</span>
+          <input
+            type="url"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            required
+            placeholder="동영상 또는 재생목록 링크"
+          />
+        </label>
+        <button
+          type="button"
+          className="button secondary full"
+          disabled={meta}
+          onClick={async () => {
+            setMeta(true);
+            try {
+              const result = await api("admin/youtube", {
+                method: "POST",
+                body: JSON.stringify({ url }),
+              });
+              if (result.title) setTitle(result.title);
+              else
+                toast(
+                  "제목을 직접 입력해주세요. 재생목록도 등록할 수 있습니다.",
+                );
+            } catch (e) {
+              toast((e as Error).message);
+            } finally {
+              setMeta(false);
+            }
+          }}
+        >
+          {meta ? "확인 중…" : "제목 자동 가져오기"}
+        </button>
+        <label className="field">
+          <span>제목 *</span>
+          <input
+            required
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={200}
+          />
+        </label>
+        <Field
+          label="설명"
+          name="description"
+          value={v?.description}
+          type="textarea"
+        />
+        <Field
+          label="촬영일"
+          name="filmed_on"
+          value={v?.filmed_on || seoulDate()}
+          type="date"
+          required
+        />
+        <Field label="유형" name="kind" value={v?.kind || "game"}>
+          {Object.entries(eventKinds)
+            .filter(([k]) => k !== "holiday")
+            .map(([k, l]) => (
+              <option key={k} value={k}>
+                {l}
+              </option>
+            ))}
+        </Field>
+        <Field label="연결 일정" name="event_id" value={v?.event_id || ""}>
+          <option value="">연결하지 않음</option>
+          {boot.events.map((e: ClubEvent) => (
+            <option value={e.id} key={e.id}>
+              {formatDate(e.starts_at)} {e.title}
+            </option>
+          ))}
+        </Field>
+        <Field
+          label="공개 범위"
+          name="visibility"
+          value={v?.visibility || "member"}
+        >
+          <option value="member">회원 · 운영진</option>
+          <option value="public">전체 공개</option>
+        </Field>
+      </SaveForm>
+      {v && <DeleteButton resource="videos" id={v.id} done={close} />}
+    </Modal>
+  );
+}
+
+export function RuleForm({ done }: { done: () => void }) {
+  const { mutate } = useApp();
+  return (
+    <SaveForm
+      onSubmit={async (f) => {
+        await mutate("admin/rules", Object.fromEntries(f));
+        done();
+      }}
+    >
+      <Field
+        label="카테고리 키 (같은 키는 버전 추가)"
+        name="category"
+        required
+        placeholder="guest / member / operation"
+      />
+      <Field label="회칙 제목" name="title" required />
+      <Field
+        label="회칙 내용"
+        name="content"
+        type="textarea"
+        required
+        rows={10}
+      />
+      <p className="micro">
+        저장하면 새 버전으로 게시됩니다. 기존 동의 기록의 버전은 유지됩니다.
+      </p>
+    </SaveForm>
+  );
+}

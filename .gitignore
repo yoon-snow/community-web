@@ -9,3 +9,6 @@ next-env.d.ts
 *.log
 .DS_Store
 coverage/
+test-results/
+playwright-report/
+.local-data/

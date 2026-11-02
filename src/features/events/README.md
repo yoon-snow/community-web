@@ -1,3 +1,3 @@
-# 일정·출석
+# Events and attendance
 
-향후 일정·출석 UI와 관련 서버 코드를 둘 자리입니다. 일정·출석 모델과 API는 아직 구현하지 않았습니다.
+Mobile calendar, event details, RSVP and admin attendance screens are in `src/components/club/`. API: `src/app/api/club/[...path]/route.ts`. The database stores RSVP independently from actual attendance; only admins can verify attendance after event end. Guest counts include only admin-verified payments. Every time is rendered in Asia/Seoul.

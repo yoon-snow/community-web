@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ko">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  /><meta name="theme-color" content="#0F1F3D" /><title>
+    SpotLight · 연결 확인</title
+  ><style>
+    @font-face {
+      font-family: "S-Core Dream";
+      src: url("/fonts/s-core-dream/S-CoreDream-4Regular.woff") format("woff");
+      font-weight: 400;
+      font-display: swap;
+    }
+    body {
+      margin: 0;
+      background: #f7f7f5;
+      color: #0f1f3d;
+      font:
+        16px "S-Core Dream",
+        system-ui;
+      display: grid;
+      min-height: 100dvh;
+      place-items: center;
+    }
+    main {
+      max-width: 320px;
+      text-align: center;
+      padding: 24px;
+    }
+    h1 {
+      font-size: 28px;
+    }
+    p {
+      color: #667085;
+      line-height: 1.8;
+    }
+    a {
+      display: inline-block;
+      padding: 16px 24px;
+      background: #0f1f3d;
+      color: white;
+      border-radius: 12px;
+      text-decoration: none;
+    }
+  </style>
+  <main>
+    <img width="72" height="72" src="/icon-192.png" alt="SpotLight" />
+    <h1 id="connection-title">앱에 연결할 수 없어요</h1>
+    <p id="connection-description">
+      네트워크 또는 서버 연결을 확인한 뒤 다시 시도해주세요.
+    </p>
+    <p>개인정보 보호를 위해 회원 데이터는 오프라인에 보관하지 않습니다.</p>
+    <a href="/">다시 연결하기</a>
+  </main>
+  <script>
+    if (["localhost", "127.0.0.1", "[::1]"].includes(location.hostname)) {
+      document.getElementById("connection-title").textContent =
+        "개발 서버에 연결할 수 없어요";
+      document.getElementById("connection-description").textContent =
+        "이 컴퓨터의 개발 서버가 실행 중인지 확인해주세요. 인터넷이 연결되어 있어도 서버가 꺼지면 이 화면이 표시됩니다.";
+    }
+  </script>
+</html>

@@ -1,15 +1,30 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
-
 export const metadata: Metadata = {
-  title: "커뮤니티",
-  description: "소규모 커뮤니티 웹사이트 초기 환경",
+  title: "SpotLight · Volleyball Club",
+  description: "함께 뛰고, 함께 빛나는 SpotLight 배구동호회 공식 앱",
+  applicationName: "SpotLight",
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "SpotLight" },
+  icons: { icon: "/icon-192.png", apple: "/apple-touch-icon.png" },
+  manifest: "/manifest.webmanifest",
 };
-
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#0F1F3D",
+};
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ko">
-      <body>{children}</body>
+      <body>
+        <a href="#main-content" className="skip-link">
+          본문으로 이동
+        </a>
+        {children}
+      </body>
     </html>
   );
 }

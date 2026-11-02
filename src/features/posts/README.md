@@ -1,3 +1,3 @@
-# 공지·게시글
+# Notices and videos
 
-향후 게시판 UI와 관련 서버 코드를 둘 자리입니다. 게시글·공지 모델과 CRUD API는 아직 구현하지 않았습니다.
+Announcements support public/member/admin audiences, publication windows, required/event/emergency types. Emergency delivery is audience-scoped through notifications/outbox. Videos store validated YouTube video/playlist metadata, visibility and event links. No video binaries are uploaded. API and PostgreSQL RLS both protect private content.
