@@ -1,13 +1,13 @@
 # SpotLight Volleyball Club
 
-SpotLight 배구동호회 모바일 웹앱/PWA입니다. Navy & Gold 앱 셸, 공개 일정·공지·단계형 게스트 신청, 승인 기반 Google 회원 로그인, 운영진 관리, 출석·회비·유니폼, 영상 아카이브, 알림, Import/Export를 포함합니다.
+SpotLight 배구동호회 모바일 웹앱/PWA입니다. Navy & Gold 앱 셸, 공개 일정·공지·단계형 게스트 신청, 승인 기반 이메일·비밀번호 회원 로그인, 운영진 관리, 출석·회비·유니폼, 영상 아카이브, 알림, Import/Export를 포함합니다.
 
-기존 GitHub `yoon-snow/community-web`의 `main`은 Vercel `community-web` 프로젝트에 연결되어 있습니다. 배포 주소는 [community-web-yoonseol.vercel.app](https://community-web-yoonseol.vercel.app)이며, 2026-11-02 확인 시 Vercel 로그인 보호가 적용되어 있습니다. 프로젝트를 새로 만들지 않고 기존 연결을 유지합니다. 로컬 Supabase·Google OAuth는 미설정 상태로 확인했으며 실제 운영 DB·OAuth·Storage·Push 검증은 아직 수행하지 않았습니다. 연결 전에는 실제 신청 성공을 표시하지 않습니다. 실제 개인정보 Import와 실기기 검증 범위는 `docs/QA.md`에 구분했습니다.
+기존 GitHub `yoon-snow/community-web`의 `main`은 Vercel `community-web` 프로젝트에 연결되어 있습니다. 배포 주소는 [community-web-yoonseol.vercel.app](https://community-web-yoonseol.vercel.app)이며, 2026-11-02 확인 시 Vercel 로그인 보호가 적용되어 있습니다. 프로젝트를 새로 만들지 않고 기존 연결을 유지합니다. 로컬 Supabase 인증은 미설정 상태로 확인했으며 실제 운영 DB·인증 메일·Storage·Push 검증은 아직 수행하지 않았습니다. 연결 전에는 실제 신청 성공을 표시하지 않습니다. 실제 개인정보 Import와 실기기 검증 범위는 `docs/QA.md`에 구분했습니다.
 
 ## 기술과 구조
 
 - Next.js 16.4 App Router / React / TypeScript / CSS 변수 기반 모바일 디자인
-- Supabase PostgreSQL / Auth (Google PKCE) / private Storage / RLS
+- Supabase PostgreSQL / Auth (이메일·비밀번호, 확인 메일, 비밀번호 재설정) / private Storage / RLS
 - Zod 서버 입력 검증, `read-excel-file` / `write-excel-file`, Web Push
 - PGlite PostgreSQL 권한·트랜잭션 테스트, Playwright 모바일 viewport 테스트
 - Asia/Seoul. 프런트에서 선택한 역할을 인증에 사용하지 않습니다.
@@ -15,7 +15,7 @@ SpotLight 배구동호회 모바일 웹앱/PWA입니다. Navy & Gold 앱 셸, �
 권장안 중 Tailwind 대신 기존 CSS 구조를 확장했습니다. 작은 단일 앱에 추가 빌드 체인을 도입하지 않고 동일한 모바일 토큰·반응형 레이아웃을 유지하기 위한 선택입니다. 기존 MongoDB 모듈과 `/api/health/db`는 이전 진단용으로 보존했으며, 클럽 데이터는 Supabase에 저장합니다.
 
 ```text
-src/app/                      홈·화면 라우팅, OAuth, API, Manifest
+src/app/                      홈·화면 라우팅, 인증, API, Manifest
 src/components/club/          공통 UI / 공개·회원·관리자·운영 화면
 src/lib/domain.ts             입력 검증, 날짜, 공유·Export 보안
 src/lib/import.ts             정규화 Import 계약과 검증
@@ -96,7 +96,7 @@ CLI가 없다면 `supabase/migrations/` SQL 파일들을 파일명 순서대로 
 - 홈은 긴급공지 → 일반 콘텐츠 순서입니다. 공지는 긴급 → 필독 → 이벤트 → 일반 순서이며 대상·게시 기간·삭제 상태를 API와 RLS에서 검사합니다.
 - 일정과 공지는 숨김 삭제합니다. 출석/신청 관계와 공지 이력을 지우지 않습니다. `announcement_versions`는 수정 당시 본문·대상·게시 기간을 변경 불가능한 버전으로 보관합니다. 기존 공지는 현재 내용을 v1으로 기록하며 과거에 존재하지 않는 수정 이력은 만들어내지 않습니다.
 - 게스트 흐름은 홈 → 일정 상세 → `/guest-guide?event=...` → 공지 확인 → 단계형 신청입니다. 최종 동의 시 확인한 버전을 고정하고 `guest_applications.announcement_versions`에 저장합니다. 기존 `rule_versions` 기록도 유지합니다. 안내가 바뀌면 재확인을 요구하고, DB가 오래되거나 비공개인 공지 버전의 제출을 거절합니다.
-- 미리보기는 가상 데이터이고 실제 저장을 수행하지 않습니다. 운영 계정 CRUD와 실제 공개 배포 검증은 Supabase/Google OAuth/호스팅 연결 후 진행합니다.
+- 미리보기는 가상 데이터이고 실제 저장을 수행하지 않습니다. 운영 계정 CRUD와 실제 공개 배포 검증은 Supabase 인증/호스팅 연결 후 진행합니다.
 
 ## 게스트 신청 단계
 
@@ -114,7 +114,7 @@ CLI가 없다면 `supabase/migrations/` SQL 파일들을 파일명 순서대로 
 
 기존 마이그레이션 뒤에 `supabase/migrations/202611020008_members.sql`을 추가 적용합니다. 기존 회원·가입 신청·출석·회비·일정 응답·운영진 역할을 유지합니다.
 
-- Google 로그인 후 회원 가입서를 작성합니다. 기본 정보·동의·유입 경로·기타 확인사항·가입비/회비 입금 응답·당월 게스트 참여 여부와 내역을 보관합니다. 본인의 입금 응답만으로 실제 회비를 납부 처리하지 않습니다.
+- 이메일·비밀번호 로그인 후 회원 가입서를 작성합니다. 기본 정보·동의·유입 경로·기타 확인사항·가입비/회비 입금 응답·당월 게스트 참여 여부와 내역을 보관합니다. 본인의 입금 응답만으로 실제 회비를 납부 처리하지 않습니다.
 - 관리자 회원 화면에서 승인/보류/거절과 신청자에게 표시할 검토 안내를 저장합니다. 승인 시에만 회원 계정이 활성화됩니다. 기존 회원 연결은 검증된 UUID·전화번호로 수행합니다.
 - 회원 홈은 긴급공지, 다음 운동, 참석/불참/미응답, 본인의 올해/이번 달 실제 출석·최근 참석·이번 달 회비 상태를 표시합니다. 집계는 화면의 최근 500개 기록에 의존하지 않고 DB에서 계산하며, 미래·취소·삭제 운동을 실제 출석에 포함하지 않습니다.
 - 내 프로필에서 가입일·생년월일·회원 상태·유니폼·연락처·포지션·경력을 확인하고 일부 정보를 수정합니다. 관리자도 같은 개인 프로필을 사용하며 여러 직책·역할을 함께 표시합니다.
@@ -134,22 +134,39 @@ CLI가 없다면 `supabase/migrations/` SQL 파일들을 파일명 순서대로 
 - 관리자 회원 상세에 정확한 올해/전체 출석·최근 참석일·이번 달 회비를 표시하고 기존 사진/이름/프로필/직책/역할/회원 상태/메모 수정과 가입 승인/보류/거절을 유지합니다. 신규 가입 알림과 Outbox는 활성 관리자에게만 생성됩니다.
 - 오프라인 안내는 네트워크와 서버 연결 실패를 구분해 설명합니다. 로컬 개발 서버가 꺼진 경우 인터넷 단절이라고 단정하지 않습니다. 개인정보는 계속 오프라인 캐시에 저장하지 않습니다.
 
-## Google OAuth 설정
+## 이메일·비밀번호 로그인 설정
 
-1. [Supabase Google 로그인 공식 안내](https://supabase.com/docs/guides/auth/social-sign-in/auth-google)를 엽니다.
-2. Google Cloud Console에서 프로젝트를 만들거나 선택합니다. Google Auth Platform의 Branding/Audience에서 앱 이름, 지원 이메일, 대상 사용자를 설정합니다. 테스트 모드에서는 사용할 Google 계정을 테스트 사용자로 등록합니다.
-3. OAuth Client를 **Web application**으로 생성합니다.
-4. Authorized redirect URIs에 Supabase Dashboard의 Google Provider 화면에 표시되는 콜백 주소를 그대로 등록합니다. 보통 `https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback` 형식입니다. **앱의 `/auth/callback`과 혼동하지 마세요.**
-5. 발급된 Google Client ID와 Client Secret을 Supabase **Authentication → Sign In / Providers → Google**에 저장하고 활성화합니다. Google Secret을 앱의 공개 변수에 넣지 않습니다.
-6. Supabase **Authentication → URL Configuration**의 Site URL을 실제 앱 HTTPS origin으로 설정합니다. Redirect URLs에 `https://YOUR_APP_DOMAIN/auth/callback`을 정확히 등록합니다. 개발 프로젝트에는 `http://localhost:3000/auth/callback`을 별도로 등록합니다.
-7. Vercel의 `APP_URL`도 같은 앱 origin으로 설정하고 다시 배포합니다. 무제한 와일드카드 Production redirect는 사용하지 않습니다.
-8. 앱의 “Google로 계속하기”를 확인합니다. 인증 성공만으로 회원이 되지 않습니다. 미승인 사용자는 회원 신청 화면으로 이동하고, 관리자 승인 이후에만 회원 화면을 사용할 수 있습니다.
+회원·운영진은 SpotLight 계정으로 로그인합니다. Vercel 계정과 Google 계정은 앱 로그인에 필요하지 않습니다. 비밀번호는 Supabase Auth가 관리하며 `members`, 신청 응답, 관리자 메모 등에 저장하지 않습니다. 기존 `auth.users.id` → `members.user_id` → `member_id` 관계와 관리자 승인/RLS를 그대로 사용하므로 DB 테이블 재생성이나 새 회원 ID 발급이 필요하지 않습니다.
 
-기존 Imported 회원과 Google 계정을 이메일만으로 자동 연결하지 않습니다. 가입 신청의 전화번호·실제 회원 신원을 운영진이 확인한 뒤 회원 UUID로 연결합니다. Imported 과거 가입 신청에는 임의의 auth user를 만들지 않습니다.
+1. Supabase Authentication → Sign In / Providers에서 Email을 활성화합니다. 이메일 확인을 켜고 최소 비밀번호 12자 및 Secure password change를 설정합니다. Google Provider 키는 이 앱에 필요하지 않습니다.
+2. Site URL과 Vercel `APP_URL`을 `https://community-web-yoonseol.vercel.app`로 맞춥니다. Redirect URLs에는 해당 도메인의 `/auth/callback`, `/auth/callback?flow=recovery`, `/auth/confirm`을 정확히 등록합니다. 로컬 프로젝트에는 같은 경로의 localhost URL을 별도 허용합니다.
+3. 실제 회원에게 확인/재설정 메일을 보내려면 운영 SMTP와 발신 도메인을 연결하고 실제 수신을 검증합니다. Supabase 기본 메일 발송은 테스트용 제한이 있으므로 운영 가능 여부를 확인합니다. 비밀 키·SMTP 비밀번호를 저장소나 채팅에 넣지 않습니다.
+4. Email Templates의 Confirm signup 링크를 다음과 같이 설정합니다. 이 경로는 일회용 토큰을 검증하고 HttpOnly 세션을 만든 후 회원가입 신청으로 이동합니다.
+
+```html
+<a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email"
+  >이메일 확인</a
+>
+```
+
+5. Reset Password 템플릿은 아래 링크를 사용합니다. 링크 확인 뒤 새 비밀번호를 설정하고 다시 로그인합니다. PKCE 방식의 `/auth/callback?flow=recovery`도 지원하지만 토큰 해시 템플릿은 다른 기기에서 메일을 여는 경우에도 사용할 수 있습니다.
+
+```html
+<a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery"
+  >비밀번호 재설정</a
+>
+```
+
+6. 계정 생성 → 이메일 확인 → 회원가입 신청 → 관리자 승인/보류/거절 → 승인 시 활성화 순서입니다. 로그인 성공만으로 회원/관리자 권한이 생기지 않습니다. 승인된 회원은 홈, 관리자는 관리자 홈, 미승인 사용자는 가입 신청으로 이동합니다.
+7. 기존 Imported 회원은 이메일로 자동 연결하지 않습니다. 가입 신청의 전화번호와 실제 신원을 운영진이 확인한 뒤 기존 회원 UUID로 연결합니다. 기존 Google 연동 Auth 사용자가 있다면 본인 이메일 확인 후 비밀번호 재설정으로 같은 Auth 계정에 비밀번호를 설정할 수 있는지 운영 환경에서 확인합니다. 기존 회원 ID를 새로 만들거나 이름으로 합치지 않습니다.
+8. `/auth/login`은 자체 로그인 화면으로 이동합니다. 새 Google OAuth 흐름은 시작하지 않으며, 기존 PKCE callback은 이메일 인증과 호환성을 위해 유지합니다.
+9. Vercel Authentication은 **호스팅 배포 보호**로 별개입니다. 일반 회원에게 Vercel 로그인 없이 앱을 공개하려면 프로젝트 소유자가 운영 DB/RLS/계정 검증 후 Deployment Protection의 적용 범위를 결정해야 합니다. 앱 코드 변경만으로 이 보호 설정을 해제하지 않습니다.
+
+공식 문서: [Supabase 이메일·비밀번호 인증](https://supabase.com/docs/guides/auth/passwords), [서버 세션과 쿠키](https://supabase.com/docs/guides/auth/server-side/nextjs).
 
 ## 최초 Admin
 
-1. 실제 운영진이 Google 로그인을 1회 수행합니다. 회원 승인이 없어도 Auth 사용자 행은 생성됩니다.
+1. 실제 운영진이 이메일·비밀번호 계정을 생성하고 확인 메일 인증을 완료합니다. 회원 승인 전에도 Auth 사용자 행은 생성됩니다.
 2. 프로젝트 소유자가 Supabase SQL Editor에서 해당 사용자의 `auth.users.id`, 이메일, 실제 회원 전화번호를 확인합니다.
 3. `members`에 본인의 검증된 회원 기록이 없으면 직접 생성하거나 회원명단을 Import합니다. 이름을 관계키로 사용하지 않습니다.
 4. `supabase/bootstrap-admin.sql`의 이메일·전화번호 placeholder를 검증된 값으로 바꿔 SQL Editor에서 실행합니다.
@@ -226,16 +243,16 @@ npm start
 npm run test:e2e
 ```
 
-E2E는 개발 미리보기와 DB 미설정 셸에 대해 동작합니다. 로컬 Chrome 기본 경로가 다르면 `CHROME_PATH`를 지정합니다. Chrome 미설치 환경에서는 `npx playwright install chromium` 후 config의 executablePath를 해당 환경에 맞춰 조정합니다. 실제 Supabase Google 로그인은 자동으로 우회하지 않습니다.
+E2E는 개발 미리보기와 DB 미설정 셸에 대해 동작합니다. 로컬 Chrome 기본 경로가 다르면 `CHROME_PATH`를 지정합니다. Chrome 미설치 환경에서는 `npx playwright install chromium` 후 config의 executablePath를 해당 환경에 맞춰 조정합니다. 실제 Supabase 인증·메일 발송은 자동으로 우회하지 않습니다.
 
 ## 배포
 
-1. Supabase migration/Google Provider/최초 Admin/환경변수를 준비하고 스테이징에서 실제 계정으로 검증합니다.
+1. Supabase migration/Email Provider·SMTP/최초 Admin/환경변수를 준비하고 스테이징에서 실제 계정으로 검증합니다.
 2. 기존 Vercel `community-web` 프로젝트와 GitHub `main` 연결을 사용합니다. Framework Next.js, Node 24.x, Build `npm run build`, Output 기본값과 프로젝트 루트를 확인합니다. 연결된 프로젝트를 중복 생성하지 않습니다.
 3. Preview에는 개발 Supabase, Production에는 운영 Supabase 환경변수를 각각 등록합니다. `.env.local`을 업로드하거나 저장소에 올리지 않습니다.
 4. 생성된 실제 Vercel HTTPS 도메인을 `APP_URL`과 Supabase 허용 redirect에 등록하고 재배포합니다. 앱 아이콘·manifest·service worker를 확인합니다.
 5. 현재 Vercel 플랜의 하루 1회 제한에 맞춰 `vercel.json`은 매일 04:00 UTC(13:00 KST) Cron입니다. Hobby는 13:00~13:59 사이 실행될 수 있어 정각을 보장하지 않습니다. 5분 단위 재시도나 예약 긴급공지의 즉시 푸시는 세밀한 주기를 지원하는 스케줄러를 별도 연결해야 합니다. 신청 직후 관리자 알림과 공지 작성 직후 발송 경로는 그대로 유지됩니다. Push 키와 `CRON_SECRET`을 설정합니다. 제한은 [Vercel 공식 안내](https://vercel.com/docs/cron-jobs/usage-and-pricing)를 참고합니다.
 6. `docs/QA.md`의 실계정·실기기 체크를 수행하고 기존 데이터 Import는 백업된 스테이징에서 검증한 후 Production에 확정합니다.
-7. 커스텀 도메인은 Vercel Project → Settings → Domains에서 소유 도메인을 추가하고 안내된 DNS를 설정합니다. 변경 후 APP_URL, Supabase Site/Redirect URL, Google 허용 origin을 함께 갱신합니다.
+7. 커스텀 도메인은 Vercel Project → Settings → Domains에서 소유 도메인을 추가하고 안내된 DNS를 설정합니다. 변경 후 APP_URL, Supabase Site/Redirect URL과 이메일 템플릿 링크을 함께 갱신합니다.
 
-Vercel 배포 연결과 별개로 Supabase 운영 연결·개인정보 정책 검증이 남아 있어 이 저장소의 검증만으로 실운영이 완료되었다고 볼 수 없습니다. 실계정 OAuth, Supabase Storage, Push, 원본 전체 Import와 첫 Production 배포는 남아 있습니다.
+Vercel 배포 연결과 별개로 Supabase 운영 연결·개인정보 정책 검증이 남아 있어 이 저장소의 검증만으로 실운영이 완료되었다고 볼 수 없습니다. 실계정 이메일 인증·메일 발송, Supabase Storage, Push와 원본 전체 Import 검증은 남아 있습니다. 앱 소스의 Vercel 자동 배포와 운영 DB 연결은 별개입니다.

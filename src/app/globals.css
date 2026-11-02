@@ -1098,6 +1098,10 @@ i.cancelled {
   text-align: center;
   padding: 32px 24px;
 }
+.login-card .form {
+  text-align: left;
+  margin-top: 20px;
+}
 .login-card h2 {
   font-size: 22px;
   line-height: 1.5;

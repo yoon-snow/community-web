@@ -720,8 +720,8 @@ export function ReviewApplication({
   if (a.external_id && !a.user_id)
     return (
       <p className="micro">
-        과거 신청 자료 · 계정 미연결. 실제 Google 가입 신청을 받은 뒤 기존 회원
-        ID로 연결해주세요.
+        과거 신청 자료 · 계정 미연결. 실제 SpotLight 계정의 가입 신청을 받은 뒤
+        기존 회원 ID로 연결해주세요.
       </p>
     );
   return (

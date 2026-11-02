@@ -5,7 +5,7 @@ do $$
 declare u uuid; m uuid;
 begin
  select id into u from auth.users where email='REPLACE_WITH_VERIFIED_ADMIN_EMAIL';
- if u is null then raise exception 'Verified Google user not found: replace placeholder after login'; end if;
+ if u is null then raise exception 'Verified Auth user not found: replace placeholder after login'; end if;
  select id into m from public.members where phone='REPLACE_WITH_VERIFIED_ADMIN_PHONE' for update;
  if m is null then raise exception 'Create/import the verified member record first'; end if;
  if exists(select 1 from public.members where id=m and user_id is not null and user_id<>u) then raise exception 'Member is bound to another identity'; end if;

@@ -55,6 +55,7 @@ import {
 } from "./core";
 import { VideoEditor } from "./admin-forms";
 import { AttendanceHistory } from "./attendance";
+import { AuthPanel } from "./auth";
 
 export function ApplicationForm({
   membership = false,
@@ -242,9 +243,9 @@ export function ApplicationForm({
         <Back href="/account" label="내 정보" />
         <PageTitle
           title="SpotLight 회원 가입"
-          description="Google 계정으로 본인을 확인한 후 가입 신청을 진행해요."
+          description="SpotLight 계정을 만들고 이메일을 확인한 뒤 가입 신청을 진행해요."
         />
-        <GoogleLogin />
+        <AuthPanel />
       </>
     );
   if (membership && boot.application)
@@ -821,54 +822,17 @@ export function ApplicationForm({
   );
 }
 
-export function GoogleLogin() {
-  const { boot, link } = useApp();
-  return (
-    <div className="login-card card">
-      <span className="login-symbol">
-        <img
-          src="/branding/spotlight-logo-transparent.png"
-          alt="SpotLight Volleyball Club 공식 로고"
-          width={160}
-          height={169}
-        />
-      </span>
-      <h2>
-        우리 팀의 모든 순간,
-        <br />
-        SpotLight에서
-      </h2>
-      <p>
-        회원·운영진은 Google 계정으로 로그인해요.
-        <br />
-        회원 권한은 운영진 승인 후 활성화됩니다.
-      </p>
-      {boot.configured ? (
-        <a href="/auth/login" className="button google full">
-          <span className="google-letter">G</span>Google로 계속하기
-        </a>
-      ) : (
-        <>
-          <button disabled className="button google full">
-            <span className="google-letter">G</span>Google로 계속하기
-          </button>
-          <p className="micro">로그인 서비스 연결을 준비 중입니다.</p>
-        </>
-      )}
-      <Link href={link("/calendar")} className="text-button">
-        로그인 없이 일정 둘러보기
-        <ArrowRight size={15} />
-      </Link>
-    </div>
-  );
-}
-
 export function AccountScreen() {
   const { boot, link, installApp } = useApp();
   const params = useSearchParams();
   return (
     <>
       <PageTitle eyebrow="MY SPOTLIGHT" title="내 정보" />
+      {params.get("password") === "updated" && (
+        <p className="hint" role="status">
+          비밀번호가 변경되었습니다. 새 비밀번호로 로그인해주세요.
+        </p>
+      )}
       {params.get("error") && (
         <div className="error-box" role="alert">
           {params.get("error") === "setup"
@@ -928,7 +892,7 @@ export function AccountScreen() {
           </Link>
         </div>
       ) : (
-        <GoogleLogin />
+        <AuthPanel />
       )}
       <SectionTitle title="앱 설정" />
       <div className="menu-list">
@@ -960,7 +924,7 @@ export function ProfileScreen() {
   const { boot, mutate, toast } = useApp();
   const [uploading, setUploading] = useState(false);
   const activity = useResource(boot.member ? "me" : null);
-  if (!boot.member) return <GoogleLogin />;
+  if (!boot.member) return <AuthPanel />;
   const member = boot.member;
   return (
     <>
@@ -1203,7 +1167,7 @@ export function MyActivity({
 }) {
   const { boot } = useApp();
   const resource = useResource(boot.member && (dues || uniform) ? "me" : null);
-  if (!boot.member) return <GoogleLogin />;
+  if (!boot.member) return <AuthPanel />;
   return (
     <>
       <Back href="/account" label="내 정보" />
@@ -1374,7 +1338,7 @@ export function NotificationsScreen() {
           </Resource>
         </>
       ) : (
-        <GoogleLogin />
+        <AuthPanel />
       )}
     </>
   );
@@ -1398,7 +1362,7 @@ export function VideosScreen({ admin = false }: { admin?: boolean }) {
     return (
       <>
         <PageTitle title="우리의 플레이 기록" />
-        <GoogleLogin />
+        <AuthPanel />
       </>
     );
   return (

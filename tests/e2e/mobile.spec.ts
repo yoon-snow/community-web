@@ -19,8 +19,11 @@ test("public production shell has honest setup state, PWA metadata and no privat
     expect((await request.get(icon.src)).ok()).toBeTruthy();
   await page.goto("/account");
   await expect(
-    page.getByRole("button", { name: "Google로 계속하기" }),
+    page.getByRole("button", { name: "이메일로 로그인" }),
   ).toBeDisabled();
+  await expect(page.getByLabel("이메일", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("비밀번호", { exact: true })).toBeVisible();
+  await expect(page.getByText("Google로 계속하기")).toHaveCount(0);
 });
 test("guest preview: calendar, event, 5-step application preserves answers and consent", async ({
   page,
@@ -1147,4 +1150,165 @@ test("local connection fallback explains stopped development server without clai
   ).toBeVisible();
   await page.getByRole("link", { name: "다시 연결하기" }).click();
   await expect(page.getByRole("navigation", { name: "주 메뉴" })).toBeVisible();
+});
+
+test("email signin shows a generic error then loads the approved member home without social login", async ({
+  page,
+}) => {
+  let signedIn = false;
+  let attempts = 0;
+  const payloads: any[] = [];
+  const boot = () => ({
+    ...previewData(signedIn ? "member" : "guest"),
+    configured: true,
+    preview: false,
+  });
+  await page.route("**/api/club/**", (route) => {
+    const data = boot();
+    const url = new URL(route.request().url());
+    const path = url.pathname.replace("/api/club/", "") + url.search;
+    return route.fulfill({
+      json: path === "bootstrap" ? data : previewResource(path, data),
+    });
+  });
+  await page.route("**/api/auth/signin", async (route) => {
+    attempts++;
+    payloads.push(route.request().postDataJSON());
+    if (attempts === 1)
+      return route.fulfill({
+        status: 401,
+        json: { error: "이메일 또는 비밀번호를 확인해주세요." },
+      });
+    signedIn = true;
+    return route.fulfill({ json: { next: "/" } });
+  });
+  await page.goto("/account");
+  await page
+    .getByLabel("이메일", { exact: true })
+    .fill("member@example.invalid");
+  await page.getByLabel("비밀번호", { exact: true }).fill("test-password-2026");
+  await page
+    .getByRole("button", { name: "이메일로 로그인", exact: true })
+    .click();
+  await expect(page.locator(".login-card").getByRole("alert")).toContainText(
+    "이메일 또는 비밀번호",
+  );
+  await page
+    .getByRole("button", { name: "이메일로 로그인", exact: true })
+    .click();
+  await expect(
+    page
+      .getByRole("navigation", { name: "주 메뉴" })
+      .getByRole("link", { name: "영상", exact: true }),
+  ).toBeVisible();
+  expect(payloads).toHaveLength(2);
+  expect(Object.keys(payloads[1]).sort()).toEqual(["email", "password"]);
+  expect(page.url()).not.toContain("password");
+});
+
+test("own account signup and reset-email forms validate confirmation and send separate credential-free reset requests", async ({
+  page,
+}) => {
+  const boot = { ...previewData("guest"), configured: true, preview: false };
+  const signups: any[] = [];
+  const resets: any[] = [];
+  await page.route("**/api/club/bootstrap", (route) =>
+    route.fulfill({ json: boot }),
+  );
+  await page.route("**/api/auth/signup", async (route) => {
+    signups.push(route.request().postDataJSON());
+    await route.fulfill({
+      status: 201,
+      json: { message: "확인 메일을 확인한 뒤 로그인해주세요." },
+    });
+  });
+  await page.route("**/api/auth/request-reset", async (route) => {
+    resets.push(route.request().postDataJSON());
+    await route.fulfill({
+      json: {
+        message: "가입된 계정이 있다면 비밀번호 재설정 메일이 발송됩니다.",
+      },
+    });
+  });
+  await page.goto("/account");
+  await page.getByRole("button", { name: "계정 만들기", exact: true }).click();
+  await page.getByLabel("이메일", { exact: true }).fill("new@example.invalid");
+  await page.getByLabel("비밀번호", { exact: true }).fill("test-password-2026");
+  await page
+    .getByLabel("비밀번호 확인", { exact: true })
+    .fill("different-password");
+  await page
+    .getByRole("button", { name: "계정 생성하기", exact: true })
+    .click();
+  await expect(page.locator(".login-card").getByRole("alert")).toHaveText(
+    "비밀번호가 서로 다릅니다.",
+  );
+  expect(signups).toHaveLength(0);
+  await page
+    .getByLabel("비밀번호 확인", { exact: true })
+    .fill("test-password-2026");
+  await page
+    .getByRole("button", { name: "계정 생성하기", exact: true })
+    .click();
+  await expect(page.getByRole("status")).toContainText("확인 메일");
+  expect(signups).toHaveLength(1);
+  await page.getByRole("button", { name: "로그인", exact: true }).click();
+  await page
+    .getByRole("button", { name: "비밀번호 재설정", exact: true })
+    .click();
+  await expect(page.getByLabel("비밀번호", { exact: true })).toHaveCount(0);
+  await page.getByLabel("이메일", { exact: true }).fill("new@example.invalid");
+  await page
+    .getByRole("button", { name: "재설정 메일 보내기", exact: true })
+    .click();
+  await expect(page.getByRole("status")).toContainText("가입된 계정이 있다면");
+  expect(resets).toEqual([{ email: "new@example.invalid" }]);
+});
+
+test("recovery page requires a verified user and successful password change returns to own login", async ({
+  page,
+}) => {
+  let signedIn = true;
+  const updates: any[] = [];
+  await page.route("**/api/club/bootstrap", (route) =>
+    route.fulfill({
+      json: {
+        ...previewData(signedIn ? "member" : "guest"),
+        configured: true,
+        preview: false,
+      },
+    }),
+  );
+  await page.route("**/api/auth/update-password", async (route) => {
+    updates.push(route.request().postDataJSON());
+    signedIn = false;
+    await route.fulfill({ json: { next: "/account?password=updated" } });
+  });
+  await page.goto("/reset-password");
+  await page
+    .getByLabel("새 비밀번호", { exact: true })
+    .fill("new-test-password-2026");
+  await page
+    .getByLabel("비밀번호 확인", { exact: true })
+    .fill("new-test-password-2026");
+  await page
+    .getByRole("button", { name: "비밀번호 저장", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/account\?password=updated$/);
+  await expect(page.getByRole("status")).toContainText("새 비밀번호로 로그인");
+  await expect(
+    page.getByRole("button", { name: "이메일로 로그인", exact: true }),
+  ).toBeVisible();
+  expect(Object.keys(updates[0]).sort()).toEqual([
+    "password",
+    "password_confirm",
+  ]);
+  await page.goto("/reset-password");
+  await expect(
+    page.getByRole("button", { name: "비밀번호 저장", exact: true }),
+  ).toBeDisabled();
+  await page
+    .getByRole("button", { name: "재설정 메일 다시 요청하기", exact: true })
+    .click();
+  await expect(page.getByLabel("이메일", { exact: true })).toBeVisible();
 });

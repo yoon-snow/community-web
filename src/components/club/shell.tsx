@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 
 import { previewData } from "@/lib/preview";
+import { ResetPasswordScreen } from "./auth";
 
 import { api, Loader, Empty, ErrorBoxStandalone, Brand, Context } from "./core";
 import {
@@ -296,7 +297,7 @@ export default function ClubApp() {
         <main id="main-content" className="content" key={screen}>
           {adminScreen && boot.role !== "admin" ? (
             <Empty icon={ShieldCheck} title="운영진 권한이 필요해요">
-              Google 로그인 후 승인된 운영진 계정으로 이용해주세요.
+              SpotLight에 로그인한 뒤 승인된 운영진 계정으로 이용해주세요.
               <Link href={link("/account")} className="button primary">
                 로그인하기
               </Link>
@@ -354,6 +355,7 @@ export function Screens({ screen }: { screen: string }) {
   if (screen === "/rules") return <RulesScreen />;
   if (screen === "/videos") return <VideosScreen />;
   if (screen === "/account") return <AccountScreen />;
+  if (screen === "/reset-password") return <ResetPasswordScreen />;
   if (screen === "/profile") return <ProfileScreen />;
   if (screen === "/attendance") return <MyActivity />;
   if (screen === "/dues") return <MyActivity dues />;

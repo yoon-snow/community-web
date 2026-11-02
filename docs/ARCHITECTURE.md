@@ -25,23 +25,27 @@ erDiagram
 
 ## Permissions
 
-| Data/action                             | Guest       | Pending Google user | Active Member   | Admin               |
-| --------------------------------------- | ----------- | ------------------- | --------------- | ------------------- |
-| Published public events, notices, rules | read        | read                | read            | manage              |
-| Guest form                              | submit only | submit only         | submit only     | manage              |
-| Membership application                  | login first | own submit/read     | own read        | review              |
-| Profile/attendance/dues/uniform         | no          | no                  | own only        | manage              |
-| Paid guest count / RSVP count           | no          | no                  | aggregate only  | aggregate + details |
-| Guest identities / admin notes          | no          | no                  | no              | read/manage         |
-| Videos                                  | public only | public only         | member + public | manage              |
-| Export/Import/roles                     | no          | no                  | no              | manage              |
-| Notification inbox                      | no          | own                 | own             | own                 |
+| Data/action                             | Guest       | Pending Auth user | Active Member   | Admin               |
+| --------------------------------------- | ----------- | ----------------- | --------------- | ------------------- |
+| Published public events, notices, rules | read        | read              | read            | manage              |
+| Guest form                              | submit only | submit only       | submit only     | manage              |
+| Membership application                  | login first | own submit/read   | own read        | review              |
+| Profile/attendance/dues/uniform         | no          | no                | own only        | manage              |
+| Paid guest count / RSVP count           | no          | no                | aggregate only  | aggregate + details |
+| Guest identities / admin notes          | no          | no                | no              | read/manage         |
+| Videos                                  | public only | public only       | member + public | manage              |
+| Export/Import/roles                     | no          | no                | no              | manage              |
+| Notification inbox                      | no          | own               | own             | own                 |
 
 RLS uses DB-managed membership and admin rows. No self-service updates to role, membership state, join date, payments or actual attendance. Sensitive commands use narrow transactional RPCs. Service-role access is restricted to guest submission, scheduled delivery and initial manual bootstrap. All normal authenticated API queries use the caller's JWT and RLS.
 
 ## Authentication
 
-Google button → Supabase OAuth/PKCE → /auth/callback exchange → verified auth user → members.user_id → active membership → admins membership lookup. No email-only auto-link. Imported members are linked only by admin after matching an authenticated application with phone/name; user ID is immutable to members. First admin is assigned manually using the SQL bootstrap script after Google login. No publicly callable bootstrap API.
+Email/password form → same-origin `/api/auth/{signin,signup,request-reset,update-password}` → Supabase Auth → verified user → members.user_id → active membership → admins membership lookup. Passwords are never returned to the browser or stored in member/application tables. Auth signup creates only an Auth account, then requires email confirmation and the existing membership review. No email-only auto-link or user-supplied role metadata is trusted.
+
+Email templates point to `/auth/confirm?token_hash=...&type=email|recovery`. The one-time token is verified before creating HttpOnly sessions; redirects are fixed application paths and drop the token. Legacy PKCE callback remains supported, while `/auth/login` no longer initiates Google OAuth. Recovery updates only the verified current Auth account and requests global sign-out before the user signs in again. Other devices' access tokens can remain valid until their provider expiry; do not claim immediate revocation of all existing tokens. Invalid credentials and unknown-address mail requests avoid account enumeration. Provider password/rate limits remain authoritative and require production SMTP/configuration verification.
+
+Existing member UUIDs, approval, import linking and RLS are unchanged. First admin is assigned by the owner using the verified Auth account and member UUID. Vercel Authentication is an independent hosting gate; changing app login does not remove it.
 
 ## Screens/navigation
 

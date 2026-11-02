@@ -5,6 +5,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useId,
   useRef,
   useState,
   type ReactNode,
@@ -27,11 +28,14 @@ export function useApp() {
 }
 
 export async function api(path: string, options?: RequestInit) {
-  const response = await fetch("/api/club/" + path, {
-    ...options,
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    cache: "no-store",
-  });
+  const response = await fetch(
+    path.startsWith("/api/") ? path : "/api/club/" + path,
+    {
+      ...options,
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      cache: "no-store",
+    },
+  );
   const result = await response.json();
   if (!response.ok)
     throw new Error(result.error || "데이터를 불러오지 못했습니다.");
@@ -284,14 +288,27 @@ export function Field({
   children?: ReactNode;
   [key: string]: any;
 }) {
+  const fieldId = useId();
+  const labelId = `${fieldId}-label`;
+  const hintId = `${fieldId}-hint`;
+  const accessibility = {
+    "aria-labelledby": labelId,
+    ...(hint ? { "aria-describedby": hintId } : {}),
+  };
   return (
     <label className="field">
       <span>
-        {label}
-        {required && <b> *</b>}
+        <span id={labelId}>{label}</span>
+        {required && <b aria-hidden="true"> *</b>}
       </span>
       {children ? (
-        <select name={name} defaultValue={value} required={required} {...props}>
+        <select
+          name={name}
+          defaultValue={value}
+          required={required}
+          {...props}
+          {...accessibility}
+        >
           {children}
         </select>
       ) : type === "textarea" ? (
@@ -301,6 +318,7 @@ export function Field({
           required={required}
           rows={4}
           {...props}
+          {...accessibility}
         />
       ) : (
         <input
@@ -309,9 +327,14 @@ export function Field({
           defaultValue={value}
           required={required}
           {...props}
+          {...accessibility}
         />
       )}
-      {hint && <small className="micro">{hint}</small>}
+      {hint && (
+        <small className="micro" id={hintId}>
+          {hint}
+        </small>
+      )}
     </label>
   );
 }
