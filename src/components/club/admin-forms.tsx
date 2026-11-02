@@ -4,6 +4,8 @@ import { useState } from "react";
 
 import {
   eventKinds,
+  videoCategories,
+  parseYouTube,
   formatDate,
   formatTime,
   seoulDate,
@@ -308,7 +310,12 @@ export function VideoEditor({
       <SaveForm
         onSubmit={async (f) => {
           await mutate(
-            "admin/videos",
+            v?.source === "playlists" ||
+              (!v &&
+                !parseYouTube(url).video_id &&
+                parseYouTube(url).playlist_id)
+              ? "admin/playlists"
+              : "admin/videos",
             {
               ...(v ? { id: v.id } : {}),
               title,
@@ -317,7 +324,11 @@ export function VideoEditor({
               filmed_on: f.get("filmed_on"),
               kind: f.get("kind"),
               event_id: f.get("event_id") || null,
-              visibility: f.get("visibility"),
+              visibility: "member",
+              video_count: f.get("video_count")
+                ? Number(f.get("video_count"))
+                : null,
+              cover_video_url: f.get("cover_video_url") || "",
             },
             v ? "PATCH" : "POST",
           );
@@ -382,14 +393,30 @@ export function VideoEditor({
           required
         />
         <Field label="유형" name="kind" value={v?.kind || "game"}>
-          {Object.entries(eventKinds)
-            .filter(([k]) => k !== "holiday")
-            .map(([k, l]) => (
-              <option key={k} value={k}>
-                {l}
-              </option>
-            ))}
+          {Object.entries(videoCategories).map(([k, l]) => (
+            <option key={k} value={k}>
+              {l}
+            </option>
+          ))}
         </Field>
+        <Field
+          label="재생목록 영상 수"
+          name="video_count"
+          type="number"
+          min="0"
+          max="100000"
+          value={v?.video_count ?? ""}
+          hint="재생목록인 경우 입력합니다. 영상 추가 시 수정할 수 있습니다."
+        />
+        <Field
+          label="재생목록 표지 영상 URL"
+          name="cover_video_url"
+          type="url"
+          value={
+            v?.cover_video_id ? `https://youtu.be/${v.cover_video_id}` : ""
+          }
+          hint="표지로 사용할 YouTube 동영상 링크 (선택)"
+        />
         <Field label="연결 일정" name="event_id" value={v?.event_id || ""}>
           <option value="">연결하지 않음</option>
           {boot.events.map((e: ClubEvent) => (
@@ -398,16 +425,15 @@ export function VideoEditor({
             </option>
           ))}
         </Field>
-        <Field
-          label="공개 범위"
-          name="visibility"
-          value={v?.visibility || "member"}
-        >
-          <option value="member">회원 · 운영진</option>
-          <option value="public">전체 공개</option>
-        </Field>
+        <p className="hint">영상과 재생목록은 회원·관리자에게만 공개됩니다.</p>
       </SaveForm>
-      {v && <DeleteButton resource="videos" id={v.id} done={close} />}
+      {v && (
+        <DeleteButton
+          resource={v.source === "playlists" ? "video_playlists" : "videos"}
+          id={v.id}
+          done={close}
+        />
+      )}
     </Modal>
   );
 }

@@ -2,7 +2,7 @@
 
 SpotLight 배구동호회 모바일 웹앱/PWA입니다. Navy & Gold 앱 셸, 공개 일정·공지·단계형 게스트 신청, 승인 기반 이메일·비밀번호 회원 로그인, 운영진 관리, 출석·회비·유니폼, 영상 아카이브, 알림, Import/Export를 포함합니다.
 
-기존 GitHub `yoon-snow/community-web`의 `main`은 Vercel `community-web` 프로젝트에 연결되어 있습니다. 배포 주소는 [community-web-yoonseol.vercel.app](https://community-web-yoonseol.vercel.app)이며, 2026-11-02 확인 시 Vercel 로그인 보호가 적용되어 있습니다. 프로젝트를 새로 만들지 않고 기존 연결을 유지합니다. 로컬 Supabase 인증은 미설정 상태로 확인했으며 실제 운영 DB·인증 메일·Storage·Push 검증은 아직 수행하지 않았습니다. 연결 전에는 실제 신청 성공을 표시하지 않습니다. 실제 개인정보 Import와 실기기 검증 범위는 `docs/QA.md`에 구분했습니다.
+기존 GitHub `yoon-snow/community-web`의 `main`은 Vercel `community-web` 프로젝트에 연결되어 있습니다. 배포 주소는 [community-web-yoonseol.vercel.app](https://community-web-yoonseol.vercel.app)이며, 2026-11-02 프로젝트 소유자가 Vercel 로그인 보호를 해제한 뒤 비로그인 HTTP 200 응답을 확인했습니다. 프로젝트를 새로 만들지 않고 기존 연결을 유지합니다. 로컬 Supabase 인증은 미설정 상태로 확인했으며 실제 운영 DB·인증 메일·Storage·Push 검증은 아직 수행하지 않았습니다. 연결 전에는 실제 신청 성공을 표시하지 않습니다. 실제 개인정보 Import와 실기기 검증 범위는 `docs/QA.md`에 구분했습니다.
 
 ## 기술과 구조
 
@@ -160,7 +160,7 @@ CLI가 없다면 `supabase/migrations/` SQL 파일들을 파일명 순서대로 
 6. 계정 생성 → 이메일 확인 → 회원가입 신청 → 관리자 승인/보류/거절 → 승인 시 활성화 순서입니다. 로그인 성공만으로 회원/관리자 권한이 생기지 않습니다. 승인된 회원은 홈, 관리자는 관리자 홈, 미승인 사용자는 가입 신청으로 이동합니다.
 7. 기존 Imported 회원은 이메일로 자동 연결하지 않습니다. 가입 신청의 전화번호와 실제 신원을 운영진이 확인한 뒤 기존 회원 UUID로 연결합니다. 기존 Google 연동 Auth 사용자가 있다면 본인 이메일 확인 후 비밀번호 재설정으로 같은 Auth 계정에 비밀번호를 설정할 수 있는지 운영 환경에서 확인합니다. 기존 회원 ID를 새로 만들거나 이름으로 합치지 않습니다.
 8. `/auth/login`은 자체 로그인 화면으로 이동합니다. 새 Google OAuth 흐름은 시작하지 않으며, 기존 PKCE callback은 이메일 인증과 호환성을 위해 유지합니다.
-9. Vercel Authentication은 **호스팅 배포 보호**로 별개입니다. 일반 회원에게 Vercel 로그인 없이 앱을 공개하려면 프로젝트 소유자가 운영 DB/RLS/계정 검증 후 Deployment Protection의 적용 범위를 결정해야 합니다. 앱 코드 변경만으로 이 보호 설정을 해제하지 않습니다.
+9. Vercel Authentication은 **호스팅 배포 보호**로 앱 계정과 별개입니다. 현재 프로젝트 소유자가 보호를 해제하여 공유 주소에는 Vercel 계정 없이 접근할 수 있습니다. 회원 콘텐츠는 여전히 SpotLight 로그인·승인·DB RLS로 보호합니다.
 
 공식 문서: [Supabase 이메일·비밀번호 인증](https://supabase.com/docs/guides/auth/passwords), [서버 세션과 쿠키](https://supabase.com/docs/guides/auth/server-side/nextjs).
 
@@ -208,7 +208,19 @@ npx web-push generate-vapid-keys
 - Outbox claim/재시도 최대 5회, 만료된 Push subscription 삭제, 전달 직전 활성 권한 재검사
 - `GET /api/club/cron`은 `Authorization: Bearer CRON_SECRET` 필수. 요청·응답에 개인정보나 서비스 키를 넣지 않습니다.
 
-`vercel.json`은 5분마다 Cron을 실행해 예약 공지/Push 재시도/13시 명단을 처리합니다. **이 빈도는 Vercel Pro 또는 동등한 분 단위 스케줄러가 필요합니다.** Hobby의 일 1회·시간 단위 지연으로는 정확한 13시와 예약 공지 요구를 충족하지 않습니다. [Vercel 공식 제한](https://vercel.com/docs/cron-jobs/usage-and-pricing)을 확인한 후 호스팅을 선택하세요. 유료 가입은 자동 진행하지 않습니다. 다른 스케줄러는 같은 HTTPS endpoint를 비밀 Authorization 헤더로 호출하면 됩니다. 최초 사용자 접수 직후 Push는 응답 후 전달하고, 실패는 다음 Cron에서 재시도합니다.
+`vercel.json`의 현재 설정은 매일 **04:00 UTC (13:00 Asia/Seoul)**입니다. Hobby에서는 실행이 최대 59분 지연될 수 있으므로 정각 요구를 충족하려면 별도 예약 실행이 필요합니다. DB 연결 후 `supabase/schedule-roster.sql`을 사용하면 Supabase pg_cron + pg_net이 매일 04:00 UTC에 같은 보호된 endpoint를 호출합니다. [Supabase 공식 예약 실행 안내](https://supabase.com/docs/guides/functions/schedule-functions)를 따라 확장을 활성화하고 Vault에 `spotlight_app_url`(운영 HTTPS origin), `spotlight_cron_secret`(Vercel `CRON_SECRET`과 같은 32자 이상 값)을 저장한 뒤 스크립트를 실행합니다. 실제 비밀 값은 Git에 저장하지 않습니다. 기존 Vercel 일일 실행과 겹쳐도 행사·관리자·날짜별 중복 알림은 생성하지 않습니다. 설치 후 `cron.job_run_details`, `net._http_response`, 실제 관리자 수신을 스테이징에서 확인해야 합니다. 이 저장소 검증에서는 Supabase 예약 작업을 설치하거나 실제 Push를 전송하지 않았습니다.
+
+신청 직후 관리자 Push와 즉시 게시된 긴급공지 Push는 응답 후 전달합니다. 실패한 Push 재시도와 미래 예약 공지를 더 자주 처리하려면 같은 endpoint를 호출하는 별도 주기를 설정해야 합니다.
+
+## 참가자 명단 · 영상 아카이브 (010)
+
+기존 테이블/ID를 유지하고 `202611020010_archive_roster.sql`을 009 뒤에 추가합니다. 기존 영상이나 재생목록을 삭제·이동하지 않습니다.
+
+- 관리자 전용 `admin_roster`는 활성 회원의 참석 응답과 입금완료 게스트를 집계합니다. 게스트 이름·포지션은 신청 당시 응답을 우선합니다. 회원/게스트 탭, 텍스트 복사, 모바일 OS 공유, 이미지 생성·저장·공유를 제공합니다. 공유 데이터는 이름·포지션만 포함하고 연락처·생년월일·질문 답변·메모는 제외합니다. 긴 명단 이미지는 30명씩 여러 장으로 생성하여 전체 참가자를 보존합니다.
+- `video_archive`는 기존 `videos`와 `video_playlists`를 RLS를 유지하는 `security_invoker` view로 함께 읽습니다. 과거 `public` 표시가 남아 있는 영상도 게스트·미승인 계정은 원본 테이블 및 앱 API에서 읽을 수 없습니다. 신규 등록은 회원 공개 범위로 고정합니다.
+- 회원 하단 영상 탭은 최근 날짜 순 카드, 전체/Game Day/Lesson/대회/연습/이벤트 필터, 검색·날짜·일정 필터를 제공합니다. 재생목록 영상 수와 표지 영상은 관리자가 입력·수정합니다. YouTube API 없이 영상 수를 자동 동기화한다고 표시하지 않습니다.
+- 카드 상세에는 날짜·설명·연결 일정·YouTube에서 보기 링크가 있습니다. 회원 일정 상세의 ‘이 날의 영상’은 해당 일정으로 필터링한 피드에 연결됩니다. 게스트 일정에는 영상 섹션이 없습니다. 기존 재생목록에 촬영일이 없으면 등록 날짜로 표시하고, 관리자가 촬영일을 입력할 수 있습니다.
+- 일부 공개 YouTube 링크는 앱의 회원 권한을 벗어나 공유될 수 있습니다. 앱은 외부 YouTube 플레이어의 접근을 제어하지 않습니다.
 
 ## Import / Export
 

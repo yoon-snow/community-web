@@ -988,3 +988,146 @@ test("dues APIs apply month/member/status filters, validate states and stamp the
     403,
   );
 });
+
+test("video feed and video/playlist details reject guests and unapproved accounts before any query", async () => {
+  for (const who of [
+    { user: null, member: null, admin: false },
+    { user: { id: uid }, member: null, admin: false },
+  ]) {
+    const handler = route(who, {
+      from() {
+        throw Error("Must not query archive");
+      },
+    });
+    for (const target of [["videos"], ["videos", eid], ["playlists", eid]]) {
+      assert.equal((await get(handler, target)).status, who.user ? 403 : 401);
+    }
+  }
+});
+
+test("admin roster API reprojects RPC rows and never returns private fields in share payload", async () => {
+  const handler = route(
+    { ...member, admin: true },
+    {
+      async rpc(name, args) {
+        assert.equal(name, "admin_roster");
+        assert.equal(args.p_event, eid);
+        return {
+          data: {
+            event: {
+              id: eid,
+              title: "Game Day",
+              starts_at: "2026-10-04T09:00:00+09:00",
+              kind: "game",
+            },
+            members: [
+              {
+                name: "회원",
+                position: "센터",
+                phone: "01099999999",
+                admin_memo: "비공개",
+              },
+            ],
+            guests: [
+              { name: "게스트", position: "세터", birth_date: "1990-01-01" },
+            ],
+          },
+          error: null,
+        };
+      },
+    },
+  );
+  const response = await get(handler, ["admin", "roster"], `?event=${eid}`);
+  assert.equal(response.status, 200);
+  const data = await response.json();
+  assert.deepEqual(data.counts, { members: 1, guests: 1, total: 2 });
+  assert.deepEqual(data.members, [{ name: "회원", position: "센터" }]);
+  assert.deepEqual(data.guests, [{ name: "게스트", position: "세터" }]);
+  assert.ok(!JSON.stringify(data).includes("010999"));
+  assert.ok(!JSON.stringify(data).includes("비공개"));
+});
+
+test("admin archive writes preserve source tables and normalize private playlist metadata, rejecting invalid URLs before writing", async () => {
+  const calls = [];
+  const db = {
+    from(table) {
+      const q = {
+        insert: async (data) => {
+          calls.push({ table, data });
+          return { data: null, error: null };
+        },
+        update(data) {
+          calls.push({ table, data });
+          return q;
+        },
+        eq(column, value) {
+          calls.push({ column, value });
+          return q;
+        },
+        select() {
+          return q;
+        },
+        single: async () => ({ data: { id: eid }, error: null }),
+      };
+      return q;
+    },
+  };
+  const handler = route({ ...member, admin: true }, db);
+  const input = {
+    id: eid,
+    title: "10월 경기",
+    description: "경기 모음",
+    url: "https://youtube.com/playlist?list=PLabcdefghijk",
+    filmed_on: "2026-10-04",
+    kind: "game",
+    event_id: eid,
+    video_count: 12,
+    visibility: "public",
+    cover_video_url: "https://youtu.be/abcdefghijk",
+    created_by: "forged",
+  };
+  assert.equal(
+    (await write(handler, ["admin", "playlists"], input)).status,
+    200,
+  );
+  assert.equal(calls[0].table, "video_playlists");
+  assert.equal(calls[0].data.visibility, "member");
+  assert.equal(calls[0].data.created_by, uid);
+  assert.equal(calls[0].data.video_count, 12);
+  assert.equal(
+    calls[0].data.thumbnail,
+    "https://i.ytimg.com/vi/abcdefghijk/hqdefault.jpg",
+  );
+  assert.ok(!Object.hasOwn(calls[0].data, "video_id"));
+  calls.length = 0;
+  assert.equal(
+    (
+      await write(
+        handler,
+        ["admin", "videos"],
+        { ...input, url: "https://youtu.be/abcdefghijk" },
+        "PATCH",
+      )
+    ).status,
+    200,
+  );
+  assert.equal(calls[0].table, "videos");
+  assert.equal(calls[0].data.video_id, "abcdefghijk");
+  assert.ok(!Object.hasOwn(calls[0].data, "created_by"));
+  calls.length = 0;
+  assert.equal(
+    (
+      await write(handler, ["admin", "playlists"], {
+        ...input,
+        url: "https://evil.invalid/playlist?list=PLabcdefghijk",
+      })
+    ).status,
+    400,
+  );
+  assert.deepEqual(calls, []);
+  assert.equal(
+    (await write(route(member, db), ["admin", "playlists"], input)).status,
+    403,
+  );
+  assert.deepEqual(calls, []);
+});

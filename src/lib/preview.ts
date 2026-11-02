@@ -689,6 +689,7 @@ export function previewResource(path: string, boot: ClubRow): any {
         created_at: new Date().toISOString(),
       },
     ];
+  if (/^(videos|playlists)\//.test(path)) return { entry: null, event: null };
   if (path.startsWith("videos")) return { rows: [], total: 0 };
   return [];
 }

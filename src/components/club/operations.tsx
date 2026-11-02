@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowDownToLine,
   CheckCircle2,
@@ -13,6 +13,7 @@ import {
   Share2,
 } from "lucide-react";
 import {
+  eventKinds,
   positions,
   formatDate,
   seoulDate,
@@ -170,64 +171,141 @@ export function RosterScreen() {
       "",
   );
   const resource = useResource(event ? `admin/roster?event=${event}` : null);
+  const [group, setGroup] = useState("members");
+  const [images, setImages] = useState<
+    { blob: Blob; url: string; name: string }[]
+  >([]);
+  const [generating, setGenerating] = useState(false);
+  const generation = useRef(0);
+  useEffect(() => {
+    generation.current++;
+    setImages([]);
+    setGenerating(false);
+  }, [event, resource.data]);
+  useEffect(
+    () => () => {
+      generation.current++;
+    },
+    [],
+  );
+  useEffect(
+    () => () => images.forEach((i) => URL.revokeObjectURL(i.url)),
+    [images],
+  );
   async function shareImage(d: ClubRow) {
-    const canvas = document.createElement("canvas");
-    const entries = [
-      ...d.members.map((m: ClubRow) => ({
-        name: m.name,
-        position: m.position,
-        type: "회원",
-      })),
-      ...d.guests.map((g: ClubRow) => ({ ...g, type: "게스트" })),
-    ];
-    canvas.width = 900;
-    canvas.height = 360 + entries.length * 55;
-    const c = canvas.getContext("2d")!;
-    c.fillStyle = "#F7F7F5";
-    c.fillRect(0, 0, 900, canvas.height);
-    c.fillStyle = "#0F1F3D";
-    c.fillRect(0, 0, 900, 250);
-    c.fillStyle = "#C9A227";
-    await document.fonts.load('400 26px "S-Core Dream"');
-    await document.fonts.load('700 40px "S-Core Dream"');
-    c.font = '700 28px "S-Core Dream", sans-serif';
-    c.fillText("SPOTLIGHT VOLLEYBALL CLUB", 50, 65);
-    c.fillStyle = "#fff";
-    c.font = '700 40px "S-Core Dream", sans-serif';
-    c.fillText(`${formatDate(d.event.starts_at)} 참가 명단`, 50, 130);
-    c.font = '400 26px "S-Core Dream", sans-serif';
-    c.fillText(
-      `회원 ${d.members.length}명  ·  게스트 ${d.guests.length}명  ·  총 ${entries.length}명`,
-      50,
-      195,
-    );
-    c.fillStyle = "#101828";
-    c.font = '400 26px "S-Core Dream", sans-serif';
-    entries.forEach((r, i) =>
-      c.fillText(
-        `${i + 1}. [${r.type}] ${r.name} / ${r.position}`.slice(0, 55),
-        50,
-        320 + i * 55,
-      ),
-    );
-    const blob = await new Promise<Blob>((resolve, reject) =>
-      canvas.toBlob(
-        (b) => (b ? resolve(b) : reject(new Error("이미지 생성 실패"))),
-        "image/png",
-      ),
-    );
-    const file = new File([blob], "spotlight-roster.png", {
-      type: "image/png",
-    });
-    if (navigator.canShare?.({ files: [file] }))
-      await navigator.share({ files: [file], title: "SpotLight 참가 명단" });
-    else downloadBlob(blob, "spotlight-roster.png");
+    setGenerating(true);
+    const current = ++generation.current;
+    const generated: { blob: Blob; url: string; name: string }[] = [];
+    try {
+      await document.fonts.load('400 26px "S-Core Dream"');
+      await document.fonts.load('700 40px "S-Core Dream"');
+      const entries = [
+        ...d.members.map((m: ClubRow) => ({
+          name: m.name,
+          position: m.position,
+          type: "회원",
+        })),
+        ...d.guests.map((g: ClubRow) => ({
+          name: g.name,
+          position: g.position,
+          type: "게스트",
+        })),
+      ];
+      const pages = Math.max(1, Math.ceil(entries.length / 30));
+      for (let page = 0; page < pages; page++) {
+        const rows = entries.slice(page * 30, (page + 1) * 30);
+        const canvas = document.createElement("canvas");
+        canvas.width = 900;
+        canvas.height = 360 + rows.length * 65;
+        const c = canvas.getContext("2d");
+        if (!c) throw new Error("이미지 생성 실패");
+        c.fillStyle = "#F7F7F5";
+        c.fillRect(0, 0, 900, canvas.height);
+        c.fillStyle = "#0F1F3D";
+        c.fillRect(0, 0, 900, 250);
+        c.fillStyle = "#C9A227";
+        c.font = '700 28px "S-Core Dream", sans-serif';
+        c.fillText(`SPOTLIGHT · ${page + 1}/${pages}`, 50, 65);
+        c.fillStyle = "#fff";
+        c.font = '700 40px "S-Core Dream", sans-serif';
+        c.fillText(
+          `${formatDate(d.event.starts_at)} ${eventKinds[d.event.kind] || d.event.title}`,
+          50,
+          130,
+          800,
+        );
+        c.font = '400 26px "S-Core Dream", sans-serif';
+        c.fillText(
+          `회원 ${d.members.length}명 · 게스트 ${d.guests.length}명 · 총 ${entries.length}명`,
+          50,
+          195,
+        );
+        c.fillStyle = "#101828";
+        rows.forEach((r, i) =>
+          c.fillText(
+            `${page * 30 + i + 1}. [${r.type}] ${r.name} / ${r.position || "—"}`,
+            50,
+            320 + i * 65,
+            800,
+          ),
+        );
+        const blob = await new Promise<Blob>((resolve, reject) =>
+          canvas.toBlob(
+            (b) => (b ? resolve(b) : reject(new Error("이미지 생성 실패"))),
+            "image/png",
+          ),
+        );
+        generated.push({
+          blob,
+          url: URL.createObjectURL(blob),
+          name: `spotlight-roster-${page + 1}.png`,
+        });
+      }
+      if (current !== generation.current) {
+        generated.forEach((i) => URL.revokeObjectURL(i.url));
+        return;
+      }
+      setImages(generated);
+      toast("이미지를 만들었습니다. 아래에서 공유하거나 저장해주세요.");
+    } catch {
+      generated.forEach((i) => URL.revokeObjectURL(i.url));
+      toast("이미지를 생성하지 못했습니다. 텍스트 복사를 이용해주세요.");
+    } finally {
+      if (current === generation.current) setGenerating(false);
+    }
   }
   return (
     <>
       <PageTitle
         title="참가자 명단"
         description="참석 응답 회원과 입금 확인된 게스트만 포함됩니다."
+        action={
+          resource.data ? (
+            <button
+              className="button primary"
+              aria-label="공유하기"
+              onClick={async () => {
+                try {
+                  if (navigator.share)
+                    await navigator.share({
+                      title: "SpotLight 참가 명단",
+                      text: resource.data.text,
+                    });
+                  else {
+                    await navigator.clipboard.writeText(resource.data.text);
+                    toast("명단을 복사했습니다.");
+                  }
+                } catch (e) {
+                  if ((e as Error).name !== "AbortError")
+                    toast("공유하지 못했습니다. 텍스트 복사를 이용해주세요.");
+                }
+              }}
+            >
+              <Share2 size={17} />
+              공유
+            </button>
+          ) : null
+        }
       />
       <Field
         label="운동 일정"
@@ -248,18 +326,61 @@ export function RosterScreen() {
       <Resource resource={resource}>
         {(d) => (
           <>
-            <Stats
-              items={[
-                { label: "회원", value: d.members.length },
-                { label: "게스트 확정", value: d.guests.length },
-                {
-                  label: "총 예상 참가",
-                  value: d.members.length + d.guests.length,
-                },
-              ]}
-            />
             <div className="card roster">
-              <pre>{d.text}</pre>
+              <h2>
+                {formatDate(d.event.starts_at)}{" "}
+                {d.event.title || eventKinds[d.event.kind]}
+              </h2>
+              <p>
+                회원 {d.members.length}명 · 게스트 {d.guests.length}명 · 총{" "}
+                {d.members.length + d.guests.length}명
+              </p>
+              <div
+                className="button-row"
+                role="tablist"
+                aria-label="참가자 구분"
+              >
+                <button
+                  role="tab"
+                  id="roster-members"
+                  aria-selected={group === "members"}
+                  aria-controls="roster-panel"
+                  className={`button ${group === "members" ? "primary" : "secondary"}`}
+                  onClick={() => setGroup("members")}
+                >
+                  회원 {d.members.length}
+                </button>
+                <button
+                  role="tab"
+                  id="roster-guests"
+                  aria-selected={group === "guests"}
+                  aria-controls="roster-panel"
+                  className={`button ${group === "guests" ? "primary" : "secondary"}`}
+                  onClick={() => setGroup("guests")}
+                >
+                  게스트 {d.guests.length}
+                </button>
+              </div>
+              <div
+                role="tabpanel"
+                id="roster-panel"
+                aria-labelledby={`roster-${group}`}
+              >
+                {d[group].length ? (
+                  d[group].map((person: ClubRow, index: number) => (
+                    <div className="detail-line" key={index}>
+                      <strong>{person.name}</strong>
+                      <span>{person.position || "—"}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="hint">참가 예정자가 없습니다.</p>
+                )}
+              </div>
+              <details>
+                <summary>공유 텍스트 보기</summary>
+                <pre>{d.text}</pre>
+              </details>
             </div>
             <div className="button-row">
               <button
@@ -276,42 +397,55 @@ export function RosterScreen() {
                 <Copy size={17} />
                 텍스트 복사
               </button>
-              <button
-                className="button primary"
-                onClick={async () => {
-                  try {
-                    if (navigator.share)
-                      await navigator.share({
-                        title: "SpotLight 참가 명단",
-                        text: d.text,
-                      });
-                    else {
-                      await navigator.clipboard.writeText(d.text);
-                      toast("명단을 복사했습니다.");
-                    }
-                  } catch (e) {
-                    if ((e as Error).name !== "AbortError")
-                      toast("공유하지 못했습니다. 텍스트 복사를 이용해주세요.");
-                  }
-                }}
-              >
-                <Share2 size={17} />
-                공유하기
-              </button>
             </div>
             <button
               className="button secondary full"
-              onClick={async () => {
-                try {
-                  await shareImage(d);
-                } catch (e) {
-                  if ((e as Error).name !== "AbortError")
-                    toast("이미지를 생성하지 못했습니다.");
-                }
-              }}
+              disabled={generating}
+              onClick={() => shareImage(d)}
             >
-              이미지 카드로 공유
+              {generating ? "이미지 생성 중…" : "이미지 카드 생성"}
             </button>
+            {images.map((image, index) => (
+              <div className="card" key={image.url}>
+                <img
+                  src={image.url}
+                  alt={`참가자 명단 이미지 ${index + 1}`}
+                  style={{ width: "100%", height: "auto" }}
+                />
+                <div className="button-row">
+                  <button
+                    className="button secondary"
+                    onClick={() => downloadBlob(image.blob, image.name)}
+                  >
+                    이미지 저장 {index + 1}
+                  </button>
+                  <button
+                    className="button primary"
+                    onClick={async () => {
+                      const file = new File([image.blob], image.name, {
+                        type: "image/png",
+                      });
+                      try {
+                        if (navigator.canShare?.({ files: [file] }))
+                          await navigator.share({
+                            files: [file],
+                            title: "SpotLight 참가 명단",
+                          });
+                        else {
+                          downloadBlob(image.blob, image.name);
+                          toast("이미지를 저장한 뒤 공유해주세요.");
+                        }
+                      } catch (e) {
+                        if ((e as Error).name !== "AbortError")
+                          toast("이미지 저장을 이용해주세요.");
+                      }
+                    }}
+                  >
+                    이미지 공유 {index + 1}
+                  </button>
+                </div>
+              </div>
+            ))}
             <p className="micro">
               공유 명단에는 전화번호·생년월일·동의내용이 포함되지 않습니다.
             </p>

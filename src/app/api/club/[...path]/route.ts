@@ -20,6 +20,8 @@ import {
   cleanText,
   dateOnly,
   parseYouTube,
+  archiveInput,
+  archiveMetadata,
   csvSerialize,
   safeSpreadsheetCell,
   seoulDate,
@@ -361,9 +363,15 @@ async function processRequest(request: Request, segments: string[]) {
             .maybeSingle(),
         )
       : null;
-    const videos = checked(
-      await db.from("videos").select("*").eq("event_id", id).limit(50),
-    );
+    const videos = who.member
+      ? checked(
+          await db
+            .from("video_archive")
+            .select("*")
+            .eq("event_id", id)
+            .limit(50),
+        )
+      : [];
     return json({
       event,
       counts: counts
@@ -567,14 +575,29 @@ async function processRequest(request: Request, segments: string[]) {
   if (path === "videos" && method === "GET") {
     requireMember();
     let q = db
-      .from("videos")
+      .from("video_archive")
       .select("*", { count: "exact" })
-      .order("filmed_on", { ascending: false });
+      .order("filmed_on", { ascending: false })
+      .order("created_at", { ascending: false })
+      .order("source")
+      .order("id");
     const kind = url.searchParams.get("kind");
-    if (kind && kind !== "all") q = q.eq("kind", kind);
+    if (kind && kind !== "all")
+      q = q.eq(
+        "kind",
+        z.enum(["game", "lesson", "match", "practice", "event"]).parse(kind),
+      );
     const year = url.searchParams.get("year");
     const month = url.searchParams.get("month");
-    if (year && /^\d{4}$/.test(year)) {
+    if (month && !year) throw new HttpError(400, "연도를 먼저 선택해주세요.");
+    if (year) {
+      z.string()
+        .regex(/^(19|20|21)\d{2}$/)
+        .parse(year);
+      if (month)
+        z.string()
+          .regex(/^(0[1-9]|1[0-2])$/)
+          .parse(month);
       q = q
         .gte(
           "filmed_on",
@@ -592,9 +615,40 @@ async function processRequest(request: Request, segments: string[]) {
     }
     const event = url.searchParams.get("event");
     if (event) q = q.eq("event_id", uuid.parse(event));
-    const page = Math.max(0, Number(url.searchParams.get("page") || 0));
+    const page = z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(10000)
+      .parse(url.searchParams.get("page") || 0);
     const result = await q.range(page * 24, page * 24 + 23);
     return json({ rows: checked(result), total: result.count });
+  }
+  if (
+    segments.length === 2 &&
+    ["videos", "playlists"].includes(segments[0]) &&
+    method === "GET"
+  ) {
+    requireMember();
+    const entry = checked(
+      await db
+        .from("video_archive")
+        .select("*")
+        .eq("id", uuid.parse(segments[1]))
+        .eq("source", segments[0])
+        .single(),
+    );
+    const event = entry.event_id
+      ? checked(
+          await db
+            .from("events")
+            .select("id,title,starts_at,ends_at,kind,location")
+            .eq("id", entry.event_id)
+            .neq("status", "deleted")
+            .maybeSingle(),
+        )
+      : null;
+    return json({ entry, event });
   }
   if (!path.startsWith("admin/"))
     throw new HttpError(404, "화면을 찾을 수 없습니다.");
@@ -1027,36 +1081,24 @@ async function processRequest(request: Request, segments: string[]) {
   }
   if (path === "admin/roster" && method === "GET") {
     const eventId = uuid.parse(url.searchParams.get("event"));
-    const event = checked(
-      await db
-        .from("events")
-        .select("id,title,starts_at")
-        .eq("id", eventId)
-        .single(),
-    );
-    const members = checked(
-      await db
-        .from("event_attendance")
-        .select("members!inner(name,position,status)")
-        .eq("event_id", eventId)
-        .eq("response", "yes")
-        .eq("members.status", "active"),
-    );
-    const guests = checked(
-      await db
-        .from("guest_applications")
-        .select("guests(name,position),guest_payments!inner(status)")
-        .eq("event_id", eventId)
-        .eq("guest_payments.status", "paid"),
-    );
-    if (!event) throw new HttpError(404, "일정을 찾을 수 없습니다.");
-    const m = (members || []).map((r: any) => r.members);
-    const g = (guests || []).map((r: any) => r.guests);
+    const result = checked(await db.rpc("admin_roster", { p_event: eventId }));
+    const safe = (rows: any[]) =>
+      rows.map((r) => ({
+        name: String(r.name || ""),
+        position: String(r.position || ""),
+      }));
+    const members = safe(result.members || []),
+      guests = safe(result.guests || []);
     return json({
-      event,
-      members: m,
-      guests: g,
-      text: rosterText(event, m, g),
+      event: result.event,
+      members,
+      guests,
+      counts: {
+        members: members.length,
+        guests: guests.length,
+        total: members.length + guests.length,
+      },
+      text: rosterText(result.event, members, guests),
     });
   }
   if (path === "admin/analytics" && method === "GET") {
@@ -1150,31 +1192,37 @@ async function processRequest(request: Request, segments: string[]) {
     }
     return json({ ...metadata, title });
   }
-  if (path === "admin/videos" && (method === "POST" || method === "PATCH")) {
-    const input = z
-      .object({
-        title: cleanText(200).min(1),
-        description: cleanText(5000),
-        url: z.string().max(1000),
-        filmed_on: dateOnly,
-        kind: z.enum(["game", "lesson", "match", "practice", "event"]),
-        event_id: uuid.nullable(),
-        visibility: z.enum(["public", "member"]),
-      })
-      .parse(data);
-    const metadata = parseYouTube(input.url);
+  if (
+    ["admin/videos", "admin/playlists"].includes(path) &&
+    (method === "POST" || method === "PATCH")
+  ) {
+    const { cover_video_url, ...input } = archiveInput.parse(data);
+    const playlist = path === "admin/playlists";
+    let metadata: ReturnType<typeof archiveMetadata>;
+    try {
+      metadata = archiveMetadata(input.url, cover_video_url, playlist);
+    } catch {
+      throw new HttpError(
+        400,
+        "YouTube 동영상·재생목록 링크와 표지 링크를 확인해주세요.",
+      );
+    }
+    const values = { ...input, ...metadata, visibility: "member" };
+    if (playlist) delete (values as any).video_id;
     if (method === "PATCH")
       checked(
         await db
-          .from("videos")
-          .update({ ...input, ...metadata })
-          .eq("id", uuid.parse(data.id)),
+          .from(playlist ? "video_playlists" : "videos")
+          .update(values)
+          .eq("id", uuid.parse(data.id))
+          .select("id")
+          .single(),
       );
     else
       checked(
         await db
-          .from("videos")
-          .insert({ ...input, ...metadata, created_by: who.user!.id }),
+          .from(playlist ? "video_playlists" : "videos")
+          .insert({ ...values, created_by: who.user!.id }),
       );
     return json({ ok: true });
   }
@@ -1267,7 +1315,12 @@ async function processRequest(request: Request, segments: string[]) {
   if (path === "admin/delete" && method === "POST") {
     const input = z
       .object({
-        resource: z.enum(["events", "announcements", "videos"]),
+        resource: z.enum([
+          "events",
+          "announcements",
+          "videos",
+          "video_playlists",
+        ]),
         id: uuid,
       })
       .parse(data);

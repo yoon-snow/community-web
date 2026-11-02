@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import {
   eventKinds,
+  videoCategories,
   canApplyAsGuest,
   formatTime,
   noticeVersions,
@@ -1350,7 +1351,8 @@ export function VideosScreen({ admin = false }: { admin?: boolean }) {
   const [q, setQ] = useState("");
   const [year, setYear] = useState("");
   const [month, setMonth] = useState("");
-  const [event, setEvent] = useState("");
+  const params = useSearchParams();
+  const [event, setEvent] = useState(params.get("event") || "");
   const [page, setPage] = useState(0);
   const [edit, setEdit] = useState<ClubRow | boolean>(false);
   const resource = useResource(
@@ -1403,9 +1405,10 @@ export function VideosScreen({ admin = false }: { admin?: boolean }) {
         }}
         items={[
           { value: "all", label: "전체" },
-          ...Object.entries(eventKinds)
-            .filter(([k]) => k !== "holiday")
-            .map(([value, label]) => ({ value, label })),
+          ...Object.entries(videoCategories).map(([value, label]) => ({
+            value,
+            label,
+          })),
         ]}
       />
       <div className="filter-row">
@@ -1414,6 +1417,7 @@ export function VideosScreen({ admin = false }: { admin?: boolean }) {
           value={year}
           onChange={(e) => {
             setYear(e.target.value);
+            if (!e.target.value) setMonth("");
             setPage(0);
           }}
         >
@@ -1465,7 +1469,7 @@ export function VideosScreen({ admin = false }: { admin?: boolean }) {
           <>
             {d.rows.length ? (
               d.rows.map((v: ClubRow) => (
-                <div key={v.id}>
+                <div key={`${v.source || "videos"}:${v.id}`}>
                   <VideoCard video={v} />
                   {admin && (
                     <button className="text-button" onClick={() => setEdit(v)}>
@@ -1500,13 +1504,15 @@ export function VideosScreen({ admin = false }: { admin?: boolean }) {
 
 export function VideoCard({ video }: { video: ClubRow }) {
   const { link } = useApp();
+  const detail = link(`/${video.source || "videos"}/${video.id}`);
+  const playlist =
+    video.entry_type === "playlist" || (!video.video_id && video.playlist_id);
   return (
-    <div className="video-card card">
-      <a
+    <article className="video-card card">
+      <Link
         className="video-thumbnail"
-        href={video.url}
-        target="_blank"
-        rel="noopener noreferrer"
+        href={detail}
+        aria-label={`${video.title} 상세`}
       >
         {video.thumbnail ? (
           <img src={video.thumbnail} alt="" loading="lazy" />
@@ -1516,34 +1522,103 @@ export function VideoCard({ video }: { video: ClubRow }) {
         <span className="play-circle">
           <Play size={24} fill="currentColor" />
         </span>
-        {video.playlist_id && <Badge>재생목록</Badge>}
-      </a>
+        {playlist && <Badge>재생목록</Badge>}
+      </Link>
       <div className="video-info">
-        <Badge tone={video.kind}>{eventKinds[video.kind]}</Badge>
-        <h3>{video.title}</h3>
-        <p>{formatDate(video.filmed_on + "T12:00:00+09:00")}</p>
-        {video.description && <p>{video.description}</p>}
-        <div className="detail-line">
-          <a
-            href={video.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-button"
-          >
-            YouTube에서 재생
-            <ExternalLink size={14} />
-          </a>
-          {video.event_id && (
-            <Link
-              className="text-button"
-              href={link(`/events/${video.event_id}`)}
-            >
-              연결 일정
-              <ChevronRight size={14} />
-            </Link>
-          )}
-        </div>
+        <Badge tone={video.kind}>{videoCategories[video.kind]}</Badge>
+        <h3>
+          <Link href={detail}>{video.title}</Link>
+        </h3>
+        <p>
+          {videoCategories[video.kind]} ·{" "}
+          {formatDate(video.filmed_on + "T12:00:00+09:00")}
+          {video.date_source === "registered" ? " 등록" : ""}
+        </p>
+        {playlist && (
+          <p>
+            {video.video_count == null
+              ? "영상 수 미등록"
+              : `${video.video_count} Videos`}
+          </p>
+        )}
+        <Link className="text-button" href={detail}>
+          재생 <ChevronRight size={14} />
+        </Link>
       </div>
-    </div>
+    </article>
+  );
+}
+
+export function VideoDetailScreen({
+  source,
+  id,
+}: {
+  source: string;
+  id: string;
+}) {
+  const { boot, link } = useApp();
+  const resource = useResource(boot.member ? `${source}/${id}` : null);
+  if (!boot.member) return <AuthPanel />;
+  return (
+    <>
+      <Back href="/videos" label="영상 목록" />
+      <Resource resource={resource}>
+        {({ entry: v, event }) =>
+          v ? (
+            <>
+              <PageTitle title={v.title} />
+              <div className="card video-card">
+                <div className="video-thumbnail">
+                  {v.thumbnail ? (
+                    <img src={v.thumbnail} alt={`${v.title} 썸네일`} />
+                  ) : (
+                    <Volleyball size={56} />
+                  )}
+                </div>
+                <div className="video-info">
+                  <Badge tone={v.kind}>{videoCategories[v.kind]}</Badge>
+                  <p>
+                    {formatDate(v.filmed_on + "T12:00:00+09:00")}
+                    {v.date_source === "registered" ? " 등록" : ""}
+                  </p>
+                  {v.entry_type === "playlist" && (
+                    <p>
+                      {v.video_count == null
+                        ? "영상 수 미등록"
+                        : `${v.video_count} Videos`}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="card prose">
+                <h2>영상 안내</h2>
+                <p style={{ whiteSpace: "pre-wrap" }}>
+                  {v.description || "등록된 설명이 없습니다."}
+                </p>
+                {event && (
+                  <Link
+                    className="button secondary full"
+                    href={link(`/events/${event.id}`)}
+                  >
+                    {formatDate(event.starts_at)} · {event.title}
+                    <ChevronRight size={16} />
+                  </Link>
+                )}
+                <a
+                  className="button primary full"
+                  href={v.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  YouTube에서 보기 <ExternalLink size={16} />
+                </a>
+              </div>
+            </>
+          ) : (
+            <Empty title="영상을 찾을 수 없어요" />
+          )
+        }
+      </Resource>
+    </>
   );
 }

@@ -574,11 +574,25 @@ export function EventScreen({ id }: { id: string }) {
                 </Link>
               </div>
             )}
-            <SectionTitle title="이 날의 영상" />
-            {d.videos.length ? (
-              d.videos.map((v: ClubRow) => <VideoCard key={v.id} video={v} />)
-            ) : (
-              <Empty icon={Play} title="등록된 영상이 없어요" />
+            {boot.member && (
+              <>
+                <SectionTitle title="이 날의 영상" />
+                <Link
+                  className="button secondary full"
+                  href={link(`/videos?event=${id}`)}
+                >
+                  이 날의 영상 <Play size={18} />
+                </Link>
+                {d.videos.length ? (
+                  d.videos
+                    .slice(0, 3)
+                    .map((v: ClubRow) => (
+                      <VideoCard key={`${v.source}:${v.id}`} video={v} />
+                    ))
+                ) : (
+                  <Empty icon={Play} title="등록된 영상이 없어요" />
+                )}
+              </>
             )}
             {edit && (
               <EventEditor event={d.event} close={() => setEdit(false)} />

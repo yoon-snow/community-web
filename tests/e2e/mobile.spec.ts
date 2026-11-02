@@ -1312,3 +1312,183 @@ test("recovery page requires a verified user and successful password change retu
     .click();
   await expect(page.getByLabel("이메일", { exact: true })).toBeVisible();
 });
+
+test("paid-only roster has member/guest tabs and generates privacy-safe paginated share images", async ({
+  page,
+}) => {
+  const boot = { ...previewData("admin"), configured: true, preview: false };
+  const event = boot.events[0];
+  const roster = {
+    event,
+    members: Array.from({ length: 31 }, (_, i) => ({
+      name: `회원${i + 1}`,
+      position: "센터",
+    })),
+    guests: [{ name: "입금확인게스트", position: "세터" }],
+    text: "[SpotLight 참가 명단]\n회원 31명 · 게스트 1명 · 총 32명\n입금확인게스트 / 세터",
+  };
+  await page.addInitScript(() => {
+    (window as any).shared = [];
+    Object.defineProperty(navigator, "canShare", {
+      value: () => true,
+      configurable: true,
+    });
+    Object.defineProperty(navigator, "share", {
+      value: async (data: any) => {
+        (window as any).shared.push({
+          text: data.text,
+          files: data.files?.map((f: File) => ({
+            name: f.name,
+            type: f.type,
+            size: f.size,
+          })),
+        });
+      },
+      configurable: true,
+    });
+  });
+  await page.route("**/api/club/bootstrap", (r) => r.fulfill({ json: boot }));
+  await page.route("**/api/club/admin/roster?*", (r) =>
+    r.fulfill({ json: roster }),
+  );
+  await page.goto(`/admin/roster?event=${event.id}`);
+  await expect(page.getByRole("tabpanel")).toContainText("회원31");
+  await expect(page.getByRole("tabpanel")).not.toContainText("입금확인게스트");
+  await page.getByRole("tab", { name: "게스트 1", exact: true }).click();
+  await expect(page.getByRole("tabpanel")).toContainText("입금확인게스트");
+  await page.getByRole("button", { name: "공유하기", exact: true }).click();
+  expect(await page.evaluate(() => (window as any).shared[0].text)).toBe(
+    roster.text,
+  );
+  await page
+    .getByRole("button", { name: "이미지 카드 생성", exact: true })
+    .click();
+  await expect(page.getByAltText("참가자 명단 이미지 2")).toBeVisible();
+  await page
+    .getByRole("button", { name: "이미지 공유 2", exact: true })
+    .click();
+  const shared = await page.evaluate(() => (window as any).shared[1]);
+  expect(shared.files[0].name).toBe("spotlight-roster-2.png");
+  expect(shared.files[0].type).toBe("image/png");
+  expect(shared.files[0].size).toBeGreaterThan(1000);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBeTruthy();
+});
+
+test("member archive supports category chips, playlist counts, detail and event-linked video filtering", async ({
+  page,
+}) => {
+  const boot = { ...previewData("member"), configured: true, preview: false };
+  const event = boot.events[0];
+  const entries = [
+    {
+      id: "11111111-1111-4111-8111-111111111111",
+      source: "videos",
+      entry_type: "video",
+      title: "테스트 Lesson 영상",
+      kind: "lesson",
+      filmed_on: "2026-10-05",
+      video_id: "abcdefghijk",
+      url: "https://youtu.be/abcdefghijk",
+      description: "토스 연습",
+      event_id: event.id,
+    },
+    {
+      id: "22222222-2222-4222-8222-222222222222",
+      source: "playlists",
+      entry_type: "playlist",
+      title: "2026 October Game Day",
+      kind: "game",
+      filmed_on: "2026-10-04",
+      playlist_id: "PLabcdefghijk",
+      url: "https://youtube.com/playlist?list=PLabcdefghijk",
+      video_count: 12,
+      description: "10월 경기 모음",
+      event_id: event.id,
+    },
+  ];
+  let lastEvent = "";
+  await page.route("**/api/club/**", (r) => {
+    const url = new URL(r.request().url());
+    const path = url.pathname.replace("/api/club/", "");
+    if (path === "bootstrap") return r.fulfill({ json: boot });
+    if (path === "videos") {
+      lastEvent = url.searchParams.get("event") || "";
+      const kind = url.searchParams.get("kind");
+      const rows = entries.filter(
+        (e) => !kind || kind === "all" || e.kind === kind,
+      );
+      return r.fulfill({ json: { rows, total: rows.length } });
+    }
+    if (path === `playlists/${entries[1].id}`)
+      return r.fulfill({ json: { entry: entries[1], event } });
+    if (path === `events/${event.id}`)
+      return r.fulfill({
+        json: {
+          event,
+          counts: { members: 18, guests: 4, total: 22 },
+          videos: entries,
+          attendance: [],
+        },
+      });
+    return r.fulfill({ json: previewResource(path + url.search, boot) });
+  });
+  await page.goto("/videos");
+  await expect(page.getByText("12 Videos")).toBeVisible();
+  for (const name of ["전체", "Game Day", "Lesson", "대회", "연습", "이벤트"])
+    await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Lesson", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "테스트 Lesson 영상" }),
+  ).toBeVisible();
+  await expect(page.getByText("12 Videos")).toHaveCount(0);
+  await page.getByRole("button", { name: "전체", exact: true }).click();
+  await page
+    .getByRole("link", { name: "2026 October Game Day", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/playlists\//);
+  await expect(page.getByText("10월 경기 모음")).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "YouTube에서 보기" }),
+  ).toHaveAttribute("href", entries[1].url);
+  await page.getByRole("link", { name: new RegExp(event.title) }).click();
+  await page.getByRole("link", { name: "이 날의 영상", exact: true }).click();
+  await expect(page.getByLabel("연결 일정")).toHaveValue(event.id);
+  await expect.poll(() => lastEvent).toBe(event.id);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBeTruthy();
+});
+
+test("guest sees no event video section and cannot query archive details", async ({
+  page,
+}) => {
+  const boot = { ...previewData("guest"), configured: true, preview: false };
+  let archiveRequests = 0;
+  await page.route("**/api/club/**", (r) => {
+    const u = new URL(r.request().url());
+    const path = u.pathname.replace("/api/club/", "");
+    if (/^(videos|playlists)/.test(path)) archiveRequests++;
+    return r.fulfill({
+      json:
+        path === "bootstrap" ? boot : previewResource(path + u.search, boot),
+    });
+  });
+  await page.goto(`/events/${boot.events[0].id}`);
+  await expect(
+    page.getByText(boot.events[0].title, { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "이 날의 영상", exact: true }),
+  ).toHaveCount(0);
+  await page.goto("/playlists/22222222-2222-4222-8222-222222222222");
+  await expect(
+    page.getByRole("button", { name: "이메일로 로그인", exact: true }),
+  ).toBeVisible();
+  expect(archiveRequests).toBe(0);
+});

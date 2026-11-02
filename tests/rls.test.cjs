@@ -2249,3 +2249,138 @@ test("admin event attendance paginates members, filters unanswered and retains i
     /forbidden/,
   );
 });
+
+test("archive preserves legacy public videos/playlists while denying anonymous and pending access to both underlying tables and feed", async () => {
+  const unapproved = "77777777-7777-4777-8777-777777777777";
+  await db.query(
+    "insert into auth.users(id,email) values($1,'unapproved@example.invalid')",
+    [unapproved],
+  );
+  const video = (
+    await db.query(
+      "insert into public.videos(title,url,video_id,filmed_on,visibility) values('이전 공개 영상','https://youtu.be/abcdefghijk','abcdefghijk','2026-10-04','public') returning id",
+    )
+  ).rows[0];
+  const playlist = (
+    await db.query(
+      "insert into public.video_playlists(title,url,playlist_id,visibility) values('이전 재생목록','https://youtube.com/playlist?list=PLlegacy12345','PLlegacy12345','public') returning id",
+    )
+  ).rows[0];
+  for (const table of ["videos", "video_playlists"]) {
+    assert.equal(
+      (await as("anon", null, `select * from public.${table}`)).rows.length,
+      0,
+    );
+    assert.equal(
+      (await as("authenticated", unapproved, `select * from public.${table}`))
+        .rows.length,
+      0,
+    );
+  }
+  await assert.rejects(as("anon", null, "select * from public.video_archive"));
+  assert.equal(
+    (
+      await as(
+        "authenticated",
+        unapproved,
+        "select * from public.video_archive",
+      )
+    ).rows.length,
+    0,
+  );
+  const rows = (
+    await memberQuery(
+      "select * from public.video_archive where id in ($1,$2)",
+      [video.id, playlist.id],
+    )
+  ).rows;
+  assert.equal(rows.length, 2);
+  assert.equal(rows.find((r) => r.id === playlist.id).source, "playlists");
+  assert.equal(
+    rows.find((r) => r.id === playlist.id).date_source,
+    "registered",
+  );
+  await assert.rejects(
+    memberQuery(
+      "update public.video_playlists set title='변경' where id=$1 returning id",
+      [playlist.id],
+    ).then((r) => {
+      if (!r.rows.length) throw Error("denied");
+    }),
+  );
+  const updated = await adminQuery(
+    "update public.video_playlists set filmed_on='2026-10-04',video_count=12,kind='game',event_id=$1 where id=$2 returning id",
+    [event, playlist.id],
+  );
+  assert.equal(updated.rows.length, 1);
+  const entry = (
+    await memberQuery(
+      "select * from public.video_archive where source='playlists' and id=$1",
+      [playlist.id],
+    )
+  ).rows[0];
+  assert.equal(entry.video_count, 12);
+  assert.equal(entry.date_source, "filmed");
+  assert.equal(entry.event_id, event);
+});
+
+test("admin roster contains only active yes members and verified guests, preserves application snapshots, and excludes all private fields", async () => {
+  const e = (
+    await db.query(
+      "insert into public.events(title,starts_at,ends_at,location,kind) values('공유 검증',now()+interval '7 days',now()+interval '7 days 2 hours','체육관','game') returning id",
+    )
+  ).rows[0].id;
+  await db.query(
+    "insert into public.event_attendance(event_id,member_id,response) values($1,$2,'yes'),($1,$3,'no')",
+    [e, mid, oid],
+  );
+  const applications = [];
+  for (let i = 0; i < 2; i++) {
+    const g = (
+      await db.query(
+        "insert into public.guests(name,phone,position) values($1,$2,'센터') returning id",
+        [`기본이름${i}`, `0109200000${i}`],
+      )
+    ).rows[0].id;
+    const a = (
+      await db.query(
+        "insert into public.guest_applications(guest_id,event_id,answers,self_reported_paid) values($1,$2,$3,true) returning id",
+        [
+          g,
+          e,
+          JSON.stringify({
+            name: `신청이름${i}`,
+            position: "세터",
+            notes: "비공개 메모",
+            birth_date: "1990-01-01",
+            phone: `0109200000${i}`,
+          }),
+        ],
+      )
+    ).rows[0].id;
+    applications.push(a);
+    await db.query(
+      "insert into public.guest_payments(application_id,amount,status) values($1,5000,$2)",
+      [a, i === 0 ? "paid" : "pending"],
+    );
+  }
+  for (const user of [member, pending])
+    await assert.rejects(
+      as("authenticated", user, "select public.admin_roster($1)", [e]),
+    );
+  await assert.rejects(as("anon", null, "select public.admin_roster($1)", [e]));
+  const roster = (
+    await adminQuery("select public.admin_roster($1) as data", [e])
+  ).rows[0].data;
+  assert.deepEqual(roster.counts, { members: 1, guests: 1, total: 2 });
+  assert.deepEqual(roster.guests, [{ name: "신청이름0", position: "세터" }]);
+  for (const person of [...roster.members, ...roster.guests])
+    assert.deepEqual(Object.keys(person).sort(), ["name", "position"]);
+  assert.ok(!JSON.stringify(roster).includes("010920"));
+  assert.ok(!JSON.stringify(roster).includes("비공개 메모"));
+  assert.ok(!JSON.stringify(roster).includes("신청이름1"));
+  await db.query("update public.events set status='cancelled' where id=$1", [
+    e,
+  ]);
+  await assert.rejects(adminQuery("select public.admin_roster($1)", [e]));
+});

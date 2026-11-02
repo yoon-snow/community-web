@@ -338,3 +338,34 @@ test("guest availability excludes cancelled, completed and holiday events while 
     true,
   );
 });
+
+test("archive metadata normalizes playlists, uses only approved YouTube covers and validates counts", () => {
+  const p = d.archiveMetadata(
+    "https://www.youtube.com/watch?v=abcdefghijk&list=PLabcdefghijk",
+    "https://youtu.be/0123456789_",
+    true,
+  );
+  assert.equal(p.video_id, null);
+  assert.equal(p.url, "https://www.youtube.com/playlist?list=PLabcdefghijk");
+  assert.equal(p.thumbnail, "https://i.ytimg.com/vi/0123456789_/hqdefault.jpg");
+  assert.throws(() =>
+    d.archiveMetadata("https://youtu.be/abcdefghijk", "", true),
+  );
+  assert.throws(() =>
+    d.archiveMetadata(
+      "https://youtube.com/playlist?list=PLabcdefghijk",
+      "https://evil.invalid/cover.png",
+      true,
+    ),
+  );
+  assert.throws(() =>
+    d.archiveInput.parse({
+      title: "목록",
+      url: p.url,
+      filmed_on: "2026-11-02",
+      kind: "game",
+      event_id: null,
+      video_count: -1,
+    }),
+  );
+});

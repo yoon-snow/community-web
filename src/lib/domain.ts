@@ -16,6 +16,13 @@ export const eventKinds: Record<string, string> = {
   event: "이벤트",
   holiday: "휴무",
 };
+export const videoCategories: Record<string, string> = {
+  game: "Game Day",
+  lesson: "Lesson",
+  match: "대회",
+  practice: "연습",
+  event: "이벤트",
+};
 export function normalizePhone(value: string) {
   const digits = value.replace(/[^\d+]/g, "");
   return digits.replace(/^\+?82(?:0)?/, "0");
@@ -191,6 +198,45 @@ export function parseYouTube(input: string) {
       ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
       : null,
     url: url.toString(),
+  };
+}
+export const archiveInput = z.object({
+  title: cleanText(200).min(1),
+  description: cleanText(5000).default(""),
+  url: cleanText(1000).min(1),
+  filmed_on: dateOnly,
+  kind: z.enum(["game", "lesson", "match", "practice", "event"]),
+  event_id: uuid.nullable(),
+  visibility: z.enum(["public", "member"]).default("member"),
+  video_count: z.number().int().min(0).max(100000).nullable().default(null),
+  cover_video_url: cleanText(1000).default(""),
+});
+export function archiveMetadata(url: string, coverUrl = "", playlist = false) {
+  const metadata = parseYouTube(url);
+  if (playlist && !metadata.playlist_id)
+    throw new Error("재생목록 링크를 확인해주세요.");
+  const cover = coverUrl ? parseYouTube(coverUrl) : null;
+  if (cover && !cover.video_id)
+    throw new Error("표지에는 동영상 링크를 입력해주세요.");
+  const coverId =
+    playlist || !metadata.video_id
+      ? cover?.video_id || metadata.video_id
+      : null;
+  return {
+    ...metadata,
+    ...(playlist
+      ? {
+          video_id: null,
+          url: `https://www.youtube.com/playlist?list=${metadata.playlist_id}`,
+        }
+      : {}),
+    cover_video_id: coverId,
+    thumbnail:
+      metadata.video_id && !playlist
+        ? metadata.thumbnail
+        : coverId
+          ? `https://i.ytimg.com/vi/${coverId}/hqdefault.jpg`
+          : null,
   };
 }
 export function safeSpreadsheetCell(value: unknown) {

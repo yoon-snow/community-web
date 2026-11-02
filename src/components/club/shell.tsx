@@ -38,6 +38,7 @@ import {
   MyActivity,
   NotificationsScreen,
   VideosScreen,
+  VideoDetailScreen,
 } from "./member";
 import {
   AdminHome,
@@ -353,6 +354,13 @@ export function Screens({ screen }: { screen: string }) {
   if (screen === "/join") return <ApplicationForm membership />;
   if (screen === "/notices") return <NoticesScreen />;
   if (screen === "/rules") return <RulesScreen />;
+  if (/^\/(videos|playlists)\/[^/]+$/.test(screen))
+    return (
+      <VideoDetailScreen
+        source={screen.split("/")[1]}
+        id={screen.split("/")[2]}
+      />
+    );
   if (screen === "/videos") return <VideosScreen />;
   if (screen === "/account") return <AccountScreen />;
   if (screen === "/reset-password") return <ResetPasswordScreen />;
