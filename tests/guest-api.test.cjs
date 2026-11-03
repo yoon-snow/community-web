@@ -1131,3 +1131,53 @@ test("admin archive writes preserve source tables and normalize private playlist
   );
   assert.deepEqual(calls, []);
 });
+
+test("admin Export preserves month plus payment filter and unions later-row columns", async () => {
+  const calls = [];
+  const q = {};
+  for (const key of ["select", "order", "gte", "lte", "eq", "ilike", "is"])
+    q[key] = (...args) => {
+      calls.push([key, ...args]);
+      return q;
+    };
+  q.range = async () => ({
+    error: null,
+    data: [
+      { id: "one", answers: { source: "Instagram" } },
+      { id: "two", answers: { experience: "2 years", source: "=danger" } },
+    ],
+  });
+  const handler = route({ ...member, admin: true }, { from: () => q });
+  const result = await get(
+    handler,
+    ["admin", "export"],
+    "?resource=guests&format=csv&month=2026-10&status=paid",
+  );
+  assert.equal(result.status, 200);
+  assert.ok(
+    calls.some(
+      (c) =>
+        c[0] === "eq" && c[1] === "guest_payments.status" && c[2] === "paid",
+    ),
+  );
+  assert.ok(
+    calls.some(
+      (c) =>
+        c[0] === "gte" &&
+        c[1] === "submitted_at" &&
+        c[2] === "2026-10-01T00:00:00+09:00",
+    ),
+  );
+  assert.ok(
+    calls.some(
+      (c) =>
+        c[0] === "lte" &&
+        c[1] === "submitted_at" &&
+        c[2] === "2026-10-31T23:59:59+09:00",
+    ),
+  );
+  const text = await result.text();
+  assert.ok(text.includes("answers.experience"));
+  assert.ok(text.includes("2 years"));
+  assert.ok(text.includes("'=danger"));
+});

@@ -560,6 +560,16 @@ export function previewResource(path: string, boot: ClubRow): any {
       unanswered: 5,
       payment_rate: 92,
       average_participants: 22,
+      average_attendance: 2.5,
+      return_rate: 41.7,
+      monthly_members: [{ label: "10월", value: 2 }],
+      monthly_average: [{ label: "10월", value: 22 }],
+      monthly_participants: [{ label: "10월", value: 88 }],
+      participant_ratio: [
+        { label: "회원", value: 81.8 },
+        { label: "게스트", value: 18.2 },
+      ],
+      inactive_members: [],
       new_guests: 14,
       returning_guests: 10,
       positions: [

@@ -1492,3 +1492,57 @@ test("guest sees no event video section and cannot query archive details", async
   ).toBeVisible();
   expect(archiveRequests).toBe(0);
 });
+
+test("admin analytics charts fit mobile and Export retains month plus paid status", async ({
+  page,
+}) => {
+  const boot = { ...previewData("admin"), configured: true, preview: false };
+  let exportQuery = "";
+  await page.route("**/api/club/**", (r) => {
+    const u = new URL(r.request().url());
+    const path = u.pathname.replace("/api/club/", "");
+    if (path === "admin/export") {
+      exportQuery = u.search;
+      return r.fulfill({
+        body: "id,status\n1,paid",
+        contentType: "text/csv",
+        headers: { "Content-Disposition": 'attachment; filename="test.csv"' },
+      });
+    }
+    return r.fulfill({
+      json:
+        path === "bootstrap" ? boot : previewResource(path + u.search, boot),
+    });
+  });
+  await page.goto("/admin/analytics");
+  for (const name of [
+    "월별 신규 회원",
+    "월별 평균 참가자",
+    "월별 실제 참가 연인원",
+    "최근 장기 미참석 회원",
+  ])
+    await expect(
+      page.getByRole("heading", { name, exact: true }),
+    ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBeTruthy();
+  await page.screenshot({
+    path: test.info().outputPath("analytics.png"),
+    fullPage: true,
+  });
+  await page.goto("/admin/export");
+  await page.getByLabel("월 · 선택", { exact: true }).fill("2026-10");
+  await page.getByLabel("상태", { exact: true }).selectOption("paid");
+  await page.getByRole("button", { name: "내보내기", exact: true }).click();
+  await page.getByText("CSV (.csv)", { exact: true }).click();
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "파일 생성", exact: true }).click();
+  await download;
+  const params = new URLSearchParams(exportQuery);
+  expect(params.get("month")).toBe("2026-10");
+  expect(params.get("status")).toBe("paid");
+  expect(params.get("format")).toBe("csv");
+});

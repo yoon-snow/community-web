@@ -51,3 +51,11 @@ Local Next.js 16.4.3 / Node 24. Source reference read through Google Drive. No p
 - Roster RPC/API tests reject non-admin access, include only active RSVP-yes members and verified-paid guests, preserve application name/position snapshots and project only share-safe fields. Cancelled events cannot generate an operational roster. Existing admin-only signup/roster outbox, emergency member delivery, exact KST boundary and deduplication tests remain in place.
 - Mobile browser coverage adds member/guest roster tabs, OS text sharing and two PNG pages for 32 attendees, playlist counts/category filters/detail/YouTube link/event filtering, and guest event/archive privacy. Browser OS sharing is simulated; physical share-sheet behavior and delivery still require connected staging/device verification.
 - `supabase/schedule-roster.sql` is an optional installation script for enabled Supabase pg_cron/pg_net with Vault configuration. It is not a migration, was not installed remotely, and is not executable in PGlite. Real DB/SMTP/Push/13:00 scheduling remain unverified until a production Supabase project is connected.
+
+## Analytics / Export (011)
+
+- 2026-11-03: API/DB suite 99 tests passed, typecheck and production build passed. Migration 011 is exercised in PGlite, not applied to a managed production DB.
+- Added SQL tests for admin-only analytics, invalid month rejection, six-month zero filling, confirmed visit/member attendance counts, participant ratio and legacy Korean source mapping.
+- Added API test for October + paid Export filters, later-row column preservation and spreadsheet formula escaping. Existing member/guest Export denial and share-safe roster tests remain passing.
+- Added mobile tests for analytics headings/overflow and month + paid CSV download parameters; real phone and production database integration remain separate checks.
+- Mobile browser regression: all 60 tests passed across iPhone 13 / Pixel 7 Chromium emulation, including the new analytics and filtered CSV flow. Reviewed the analytics screenshot; no horizontal overflow. This is not physical-device testing.

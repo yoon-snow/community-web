@@ -2384,3 +2384,47 @@ test("admin roster contains only active yes members and verified guests, preserv
   ]);
   await assert.rejects(adminQuery("select public.admin_roster($1)", [e]));
 });
+
+test("analytics is admin-only, zero-fills months and counts only confirmed visits", async () => {
+  for (const user of [member, pending])
+    await assert.rejects(
+      as("authenticated", user, "select public.club_analytics('2001-01-01')"),
+    );
+  await assert.rejects(
+    as("anon", null, "select public.club_analytics('2001-01-01')"),
+  );
+  await assert.rejects(
+    adminQuery("select public.club_analytics('2001-01-02')"),
+  );
+  const e = (
+    await db.query(
+      "insert into public.events(title,starts_at,ends_at,location,kind,status) values('analytics fixture','2001-01-10T09:00:00+09:00','2001-01-10T12:00:00+09:00','gym','game','completed') returning id",
+    )
+  ).rows[0].id;
+  await db.query(
+    "insert into public.event_attendance(event_id,member_id,response,actual) values($1,$2,'yes',true),($1,$3,'yes',false)",
+    [e, mid, oid],
+  );
+  await db.query(
+    "insert into public.guest_applications(guest_id,event_id,submitted_at,answers,actual_attended) values($1,$2,'2001-01-01T00:00:00+09:00',$3,true)",
+    [guest, e, JSON.stringify({ "SpotLight를 알게 된 경로": "Instagram" })],
+  );
+  const data = (
+    await adminQuery("select public.club_analytics('2001-01-01') as data")
+  ).rows[0].data;
+  assert.equal(data.average_participants, 2);
+  assert.equal(data.new_guests, 1);
+  assert.equal(data.returning_guests, 0);
+  assert.equal(data.return_rate, 0);
+  assert.equal(data.monthly.length, 6);
+  assert.equal(data.monthly[5].value, 1);
+  assert.equal(data.monthly_participants[5].value, 2);
+  assert.equal(data.monthly_average[5].value, 2);
+  assert.deepEqual(
+    data.participant_ratio.map((r) => r.value),
+    [50, 50],
+  );
+  assert.equal(data.sources.find((r) => r.label === "Instagram").value, 1);
+  assert.equal(data.member_attendance.find((r) => r.id === mid).value, 1);
+  assert.equal(data.member_attendance.find((r) => r.id === oid).value, 0);
+});
