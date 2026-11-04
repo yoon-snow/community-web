@@ -660,12 +660,11 @@ export function ApplicationForm({
             </label>
             <details className="card prose">
               <summary>개인정보 수집·이용 안내</summary>
-              <p>{boot.privacy?.text || "개인정보 안내를 준비 중입니다."}</p>
-              {boot.privacy?.retentionDays && (
-                <p>
-                  보유기간: {boot.privacy.retentionDays}일 · 문의:{" "}
-                  {boot.privacy.contact}
-                </p>
+              <p style={{ whiteSpace: "pre-line" }}>
+                {boot.privacy?.text || "개인정보 안내를 준비 중입니다."}
+              </p>
+              {boot.privacy?.contact && (
+                <p>개인정보 문의·삭제 요청: {boot.privacy.contact}</p>
               )}
             </details>
             <label className="checkbox">
