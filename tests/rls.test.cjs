@@ -2428,3 +2428,39 @@ test("analytics is admin-only, zero-fills months and counts only confirmed visit
   assert.equal(data.member_attendance.find((r) => r.id === mid).value, 1);
   assert.equal(data.member_attendance.find((r) => r.id === oid).value, 0);
 });
+
+test("weekly schedule fills Korea dates once, preserves edits, and limits operations to admins", async () => {
+  const generate = "select public.extend_regular_schedule() as added";
+  await assert.rejects(memberQuery(generate));
+  await assert.rejects(as("anon", null, generate));
+  const first = await adminQuery(generate);
+  assert.ok(first.rows[0].added >= 37);
+  const slots = (
+    await adminQuery(
+      "select id,kind,regular_date,location,guest_fee,guests_open,extract(isodow from regular_date)::int dow,to_char(starts_at at time zone 'Asia/Seoul','HH24:MI') start,to_char(ends_at at time zone 'Asia/Seoul','HH24:MI') finish from public.events where regular_date is not null",
+    )
+  ).rows;
+  for (const s of slots) {
+    assert.ok([1, 2, 4, 5, 7].includes(s.dow));
+    assert.equal(s.location, "광명동초등학교");
+    assert.equal(s.guests_open, true);
+    assert.equal(s.kind, [1, 5].includes(s.dow) ? "lesson" : "game");
+    assert.equal(s.guest_fee, s.kind === "lesson" ? 15000 : 5000);
+    assert.equal(s.start, s.dow === 7 ? "17:00" : "18:00");
+    assert.equal(s.finish, s.dow === 7 ? "20:00" : "21:00");
+  }
+  await adminQuery(
+    "update public.events set status='cancelled',starts_at=starts_at+interval '1 hour' where id=$1",
+    [slots[0].id],
+  );
+  assert.equal((await adminQuery(generate)).rows[0].added, 0);
+  assert.equal((await as("service_role", null, generate)).rows[0].added, 0);
+  await adminQuery(
+    "insert into public.club_sources(category,title,content) values('guide','운영 자료','비공개')",
+  );
+  assert.equal(
+    (await memberQuery("select * from public.club_sources")).rows.length,
+    0,
+  );
+  await assert.rejects(as("anon", null, "select * from public.club_sources"));
+});

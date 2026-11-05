@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ArrowRight,
   CalendarDays,
@@ -48,6 +48,7 @@ import {
   Pagination,
 } from "./core";
 import { VideoCard } from "./member";
+import { ScheduleTools } from "./schedule-tools";
 import { EventEditor, RuleForm } from "./admin-forms";
 
 export function HomeScreen() {
@@ -203,7 +204,8 @@ export function EventCard({
   event: ClubEvent;
   featured?: boolean;
 }) {
-  const { link, screen } = useApp();
+  const { link, screen, boot } = useApp();
+  const kind = boot.scheduleKinds?.find((k: ClubRow) => k.key === event.kind);
   return (
     <Link
       href={link(
@@ -213,7 +215,14 @@ export function EventCard({
     >
       <div className="event-top">
         <div className="event-badges">
-          <Badge tone={event.kind}>{eventKinds[event.kind]}</Badge>
+          <span
+            className={"badge " + event.kind}
+            style={{
+              borderLeft: "4px solid " + (kind?.color || "var(--navy)"),
+            }}
+          >
+            {kind?.label || eventKinds[event.kind] || event.kind}
+          </span>
           {(event.is_emergency || event.status === "cancelled") && (
             <Badge tone="red">
               {event.status === "cancelled" ? "운동 취소" : "긴급 변경"}
@@ -337,6 +346,20 @@ export function CalendarScreen() {
   const [selected, setSelected] = useState(seoulDate());
   const [editor, setEditor] = useState(false);
   const resource = useResource(`events?month=${month}`);
+  const days = useMemo(() => {
+    const groups = new Map<string, ClubEvent[]>();
+    for (const event of resource.data || []) {
+      const day = seoulDate(event.starts_at);
+      const group = groups.get(day);
+      if (group) group.push(event);
+      else groups.set(day, [event]);
+    }
+    return groups;
+  }, [resource.data]);
+  const kinds: ClubRow[] =
+    boot.scheduleKinds ||
+    Object.entries(eventKinds).map(([key, label]) => ({ key, label }));
+  const byKind = new Map(kinds.map((k) => [k.key, k]));
   const [year, m] = month.split("-").map(Number);
   const count = new Date(year, m, 0).getDate(),
     first = new Date(year, m - 1, 1).getDay();
@@ -398,12 +421,10 @@ export function CalendarScreen() {
               ))}
               {Array.from({ length: count }, (_, i) => {
                 const day = `${month}-${String(i + 1).padStart(2, "0")}`;
-                const e = events.filter(
-                  (v: ClubEvent) => seoulDate(v.starts_at) === day,
-                );
+                const e = days.get(day) || [];
                 return (
                   <button
-                    aria-label={`${day}${e.length ? `, 일정 ${e.length}개, ${e.map((v: ClubEvent) => (v.is_emergency || v.status === "cancelled" ? "긴급 변경" : eventKinds[v.kind])).join(", ")}` : ""}`}
+                    aria-label={`${day}${e.length ? `, 일정 ${e.length}개, ${e.map((v: ClubEvent) => (v.is_emergency || v.status === "cancelled" ? "긴급 변경" : byKind.get(v.kind)?.label || eventKinds[v.kind])).join(", ")}` : ""}`}
                     aria-pressed={selected === day}
                     className={`${selected === day ? "selected" : ""} ${seoulDate() === day ? "today" : ""}`}
                     key={day}
@@ -414,6 +435,11 @@ export function CalendarScreen() {
                       {e.slice(0, 3).map((v: ClubEvent) => (
                         <i
                           key={v.id}
+                          style={
+                            v.is_emergency || v.status === "cancelled"
+                              ? undefined
+                              : { background: byKind.get(v.kind)?.color }
+                          }
                           className={
                             v.status === "cancelled" || v.is_emergency
                               ? "cancelled"
@@ -429,30 +455,12 @@ export function CalendarScreen() {
           )}
         </Resource>
         <div className="calendar-legend">
-          <span>
-            <i className="game" />
-            Game Day
-          </span>
-          <span>
-            <i className="lesson" />
-            Lesson
-          </span>
-          <span>
-            <i className="practice" />
-            일반 운동
-          </span>
-          <span>
-            <i className="event" />
-            이벤트
-          </span>
-          <span>
-            <i className="match" />
-            특별 경기
-          </span>
-          <span>
-            <i className="holiday" />
-            휴무
-          </span>
+          {kinds.map((k) => (
+            <span key={k.key}>
+              <i className={k.key} style={{ background: k.color }} />
+              {k.label}
+            </span>
+          ))}
           <span>
             <i className="cancelled" />
             긴급 변경
@@ -495,7 +503,8 @@ export function CalendarScreen() {
         <BookOpen size={17} />
         운동 전 참가 안내 확인
       </Link>
-      {editor && <EventEditor close={() => setEditor(false)} />}
+      {boot.role === "admin" && <ScheduleTools kinds={kinds} />}
+      {editor && <EventEditor day={selected} close={() => setEditor(false)} />}
     </>
   );
 }
@@ -524,7 +533,13 @@ export function EventScreen({ id }: { id: string }) {
               <h2>오늘의 운동 안내</h2>
               <div className="detail-line">
                 <span>일정 종류</span>
-                <strong>{eventKinds[d.event.kind]}</strong>
+                <strong>
+                  {boot.scheduleKinds?.find(
+                    (k: ClubRow) => k.key === d.event.kind,
+                  )?.label ||
+                    eventKinds[d.event.kind] ||
+                    d.event.kind}
+                </strong>
               </div>
               <div className="detail-line">
                 <span>게스트 신청</span>

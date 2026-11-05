@@ -25,12 +25,24 @@ import {
 
 export function EventEditor({
   event,
+  day = seoulDate(),
   close,
 }: {
   event?: ClubRow;
+  day?: string;
   close: () => void;
 }) {
-  const { mutate } = useApp();
+  const { mutate, boot } = useApp();
+  const kinds: ClubRow[] =
+    boot.scheduleKinds ||
+    Object.entries(eventKinds).map(([key, label]) => ({ key, label }));
+  const weekday = new Date(day + "T12:00:00Z").getUTCDay();
+  const regularKind = [1, 5].includes(weekday) ? "lesson" : "game";
+  const labelFor = (key: string) =>
+    kinds.find((k) => k.key === key)?.label || key;
+  const defaultStart = day + "T" + (weekday === 0 ? "17:00" : "18:00");
+  const defaultEnd = day + "T" + (weekday === 0 ? "20:00" : "21:00");
+
   const [urgent, setUrgent] = useState(Boolean(event?.is_emergency));
   const local = (s: string) => {
     const date = new Date(s);
@@ -54,7 +66,7 @@ export function EventEditor({
               is_emergency: urgent,
               change_reason: f.get("change_reason") || "",
               guest_fee: Number(f.get("guest_fee")),
-              status: f.get("status"),
+              status: f.get("status") || "scheduled",
             },
             event ? "PATCH" : "POST",
           );
@@ -64,7 +76,7 @@ export function EventEditor({
         <Field
           label="일정 이름"
           name="title"
-          value={event?.title}
+          value={event?.title ?? labelFor(regularKind)}
           required
           maxLength={150}
         />
@@ -72,21 +84,42 @@ export function EventEditor({
           label="시작 · 한국 시간"
           name="starts_at"
           type="datetime-local"
-          value={event ? local(event.starts_at) : undefined}
+          value={event ? local(event.starts_at) : defaultStart}
           required
         />
         <Field
           label="종료 · 한국 시간"
           name="ends_at"
           type="datetime-local"
-          value={event ? local(event.ends_at) : undefined}
+          value={event ? local(event.ends_at) : defaultEnd}
           required
         />
-        <Field label="장소" name="location" value={event?.location} required />
-        <Field label="종류" name="kind" value={event?.kind || "game"}>
-          {Object.entries(eventKinds).map(([v, l]) => (
-            <option value={v} key={v}>
-              {l}
+        <Field
+          label="장소"
+          name="location"
+          value={event?.location ?? "광명동초등학교"}
+          required
+        />
+        <Field
+          label="종류"
+          name="kind"
+          value={event?.kind ?? regularKind}
+          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+            if (event) return;
+            const form = e.currentTarget.form,
+              key = e.currentTarget.value;
+            if (!form) return;
+            const title = form.elements.namedItem("title") as HTMLInputElement;
+            if (kinds.some((k) => k.label === title.value) || !title.value)
+              title.value = labelFor(key);
+            if (key === "game" || key === "lesson")
+              (form.elements.namedItem("guest_fee") as HTMLInputElement).value =
+                key === "game" ? "5000" : "15000";
+          }}
+        >
+          {kinds.map((k) => (
+            <option value={k.key} key={k.key}>
+              {k.label}
             </option>
           ))}
         </Field>
@@ -100,7 +133,7 @@ export function EventEditor({
           label="게스트비"
           name="guest_fee"
           type="number"
-          value={event?.guest_fee ?? 5000}
+          value={event?.guest_fee ?? (regularKind === "lesson" ? 15000 : 5000)}
           min={0}
           required
         />
@@ -108,7 +141,7 @@ export function EventEditor({
           <input
             type="checkbox"
             name="guests_open"
-            defaultChecked={event?.guests_open}
+            defaultChecked={event?.guests_open ?? true}
           />
           <span>게스트 신청 허용</span>
         </label>
@@ -130,17 +163,23 @@ export function EventEditor({
             placeholder="체육관 또는 시간 변경 내용을 입력해주세요."
           />
         )}
-        <Field label="상태" name="status" value={event?.status || "scheduled"}>
-          {[
-            { value: "scheduled", label: "예정" },
-            { value: "completed", label: "완료" },
-            { value: "cancelled", label: "취소" },
-          ].map((i) => (
-            <option value={i.value} key={i.value}>
-              {i.label}
-            </option>
-          ))}
-        </Field>
+        {event && (
+          <Field
+            label="상태"
+            name="status"
+            value={event?.status || "scheduled"}
+          >
+            {[
+              { value: "scheduled", label: "진행 전" },
+              { value: "completed", label: "완료" },
+              { value: "cancelled", label: "취소" },
+            ].map((i) => (
+              <option value={i.value} key={i.value}>
+                {i.label}
+              </option>
+            ))}
+          </Field>
+        )}
       </SaveForm>
       {event && <DeleteButton resource="events" id={event.id} done={close} />}
     </Modal>

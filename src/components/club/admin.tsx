@@ -1051,6 +1051,18 @@ export function AdminMore() {
   return (
     <>
       <PageTitle eyebrow="OPERATIONS" title="더보기" />
+      <div className="card">
+        <h2>화면 미리보기</h2>
+        <div className="button-row">
+          <Link className="button secondary" href="/preview?role=guest">
+            비회원 화면
+          </Link>
+          <Link className="button secondary" href="/preview?role=member">
+            회원 화면
+          </Link>
+        </div>
+        <small>가상 데이터로 확인할 수 있습니다.</small>
+      </div>
       <Menu
         items={[
           { href: "/admin/attendance", label: "출석 관리", icon: CheckCircle2 },

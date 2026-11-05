@@ -1998,3 +1998,58 @@ i.match {
   gap: 6px;
   flex-wrap: wrap;
 }
+
+.ops-shell {
+  --bg: #edf1f7;
+}
+.ops-shell .app-bar,
+.ops-shell .bottom-nav {
+  background: #0f1f3d;
+  color: white;
+  border-color: #314567;
+}
+.ops-shell .bottom-nav a,
+.ops-shell .app-bar .icon-button {
+  color: #e3eaf5;
+}
+.ops-shell .bottom-nav a.active,
+.ops-shell .brand small {
+  color: #e4c968;
+}
+.ops-shell .bottom-nav a.active > span {
+  background: #293e60;
+}
+.ops-shell .mode-link {
+  background: #e4c968;
+  color: #081426;
+}
+.ops-shell .card,
+.ops-shell .form,
+.ops-shell .field,
+.ops-shell .content > * {
+  min-width: 0;
+  max-width: 100%;
+}
+.ops-shell .field select,
+.ops-shell .field input,
+.ops-shell .field textarea {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+}
+.ops-shell details > summary {
+  cursor: pointer;
+  font-weight: 700;
+  min-height: 44px;
+  align-content: center;
+}
+.source-review {
+  margin-block: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow-wrap: anywhere;
+}
+.source-review p {
+  white-space: pre-wrap;
+}

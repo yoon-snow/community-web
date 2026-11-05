@@ -715,6 +715,7 @@ export function ExportScreen() {
   );
 }
 
+import { SourceImport } from "./source-import";
 export function ImportScreen() {
   const { boot, mutate } = useApp();
   const [entity, setEntity] = useState<ImportEntity>("members");
@@ -792,6 +793,7 @@ export function ImportScreen() {
         title="기존 데이터 Import"
         description="매핑 → 미리보기 → 운영진 확정 순서로 반영해요."
       />
+      <SourceImport />
       <div className="hint">
         <Info size={18} />
         <span>

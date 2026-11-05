@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
@@ -39,24 +40,55 @@ import {
   VideosScreen,
   VideoDetailScreen,
 } from "./member";
-import {
-  AdminHome,
-  AdminGuests,
-  AdminMembers,
-  AdminMore,
-  AdminAttendance,
-  AdminDues,
-  AdminNotices,
-  AdminUniforms,
-  SettingsScreen,
-} from "./admin";
-import {
-  AnalyticsScreen,
-  RosterScreen,
-  ExportScreen,
-  ImportScreen,
-} from "./operations";
-
+const AdminHome = dynamic(() => import("./admin").then((m) => m.AdminHome), {
+  loading: Loader,
+});
+const AdminGuests = dynamic(
+  () => import("./admin").then((m) => m.AdminGuests),
+  { loading: Loader },
+);
+const AdminMembers = dynamic(
+  () => import("./admin").then((m) => m.AdminMembers),
+  { loading: Loader },
+);
+const AdminMore = dynamic(() => import("./admin").then((m) => m.AdminMore), {
+  loading: Loader,
+});
+const AdminAttendance = dynamic(
+  () => import("./admin").then((m) => m.AdminAttendance),
+  { loading: Loader },
+);
+const AdminDues = dynamic(() => import("./admin").then((m) => m.AdminDues), {
+  loading: Loader,
+});
+const AdminNotices = dynamic(
+  () => import("./admin").then((m) => m.AdminNotices),
+  { loading: Loader },
+);
+const AdminUniforms = dynamic(
+  () => import("./admin").then((m) => m.AdminUniforms),
+  { loading: Loader },
+);
+const SettingsScreen = dynamic(
+  () => import("./admin").then((m) => m.SettingsScreen),
+  { loading: Loader },
+);
+const AnalyticsScreen = dynamic(
+  () => import("./operations").then((m) => m.AnalyticsScreen),
+  { loading: Loader },
+);
+const RosterScreen = dynamic(
+  () => import("./operations").then((m) => m.RosterScreen),
+  { loading: Loader },
+);
+const ExportScreen = dynamic(
+  () => import("./operations").then((m) => m.ExportScreen),
+  { loading: Loader },
+);
+const ImportScreen = dynamic(
+  () => import("./operations").then((m) => m.ImportScreen),
+  { loading: Loader },
+);
 export default function ClubApp() {
   const pathname = usePathname();
   const params = useSearchParams();
@@ -78,13 +110,6 @@ export default function ClubApp() {
       : path;
   useEffect(() => {
     if (preview) {
-      if (
-        process.env.NODE_ENV === "production" &&
-        process.env.NEXT_PUBLIC_ENABLE_PREVIEW !== "true"
-      ) {
-        setError("미리보기가 비활성화되어 있습니다.");
-        return;
-      }
       setBoot(previewData(params.get("role") || "guest"));
       return;
     }
@@ -224,10 +249,17 @@ export default function ClubApp() {
         ];
   return (
     <Context.Provider value={context}>
-      <div className="app-shell">
+      <div
+        className={
+          adminScreen && boot.role === "admin"
+            ? "app-shell ops-shell"
+            : "app-shell"
+        }
+      >
         {preview && (
           <div className="preview-bar">
             <span>미리보기 · 가상 데이터</span>
+            <Link href="/admin/more">미리보기 종료</Link>
             <select
               aria-label="미리보기 역할"
               value={boot.role}

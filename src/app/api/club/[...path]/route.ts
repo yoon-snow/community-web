@@ -80,7 +80,8 @@ async function processRequest(request: Request, segments: string[]) {
     const db = serviceClient();
     checked(await db.rpc("daily_notifications"));
     const push = await deliverPush();
-    return json({ ok: true, push });
+    const extended = checked(await db.rpc("extend_regular_schedule"));
+    return json({ ok: true, push, extended });
   }
   if (method !== "GET") sameOrigin(request);
   if (path === "bootstrap" && method === "GET" && !configured())
@@ -140,8 +141,20 @@ async function processRequest(request: Request, segments: string[]) {
         .select("*")
         .eq("active", true)
         .order("sort_order"),
+      db
+        .from("schedule_kinds")
+        .select("key,label,color")
+        .order("sort_order")
+        .order("label"),
     ]);
-    const [events, announcements, rules, questions] = results.map(checked);
+    const [events, announcements, rules, questions] = results
+      .slice(0, 4)
+      .map(checked);
+    const catalog = results[4];
+    const scheduleKinds =
+      catalog.error && ["42P01", "PGRST205"].includes(catalog.error.code)
+        ? undefined
+        : checked(catalog);
     let avatar_url = null;
     if (who.member?.avatar_path) {
       const signed = await db.storage
@@ -161,6 +174,7 @@ async function processRequest(request: Request, segments: string[]) {
         : null;
     return json({
       configured: true,
+      scheduleKinds,
       role: who.admin ? "admin" : who.member ? "member" : "guest",
       user: who.user ? { id: who.user.id, email: who.user.email } : null,
       member: who.member ? { ...who.member, avatar_url } : null,
@@ -1111,6 +1125,72 @@ async function processRequest(request: Request, segments: string[]) {
         }),
       ),
     );
+  }
+  if (path === "admin/regular-schedule" && method === "POST")
+    return json({ added: checked(await db.rpc("extend_regular_schedule")) });
+  if (
+    path === "admin/schedule-kinds" &&
+    (method === "POST" || method === "PATCH")
+  ) {
+    const item = z
+      .object({
+        label: z.string().trim().min(1).max(50),
+        color: z.string().regex(/^#[0-9a-f]{6}$/i),
+      })
+      .parse(data);
+    if (method === "POST")
+      checked(
+        await db
+          .from("schedule_kinds")
+          .insert({
+            ...item,
+            key: "custom_" + crypto.randomUUID().replaceAll("-", ""),
+          }),
+      );
+    else
+      checked(
+        await db
+          .from("schedule_kinds")
+          .update(item)
+          .eq("key", z.string().min(1).max(64).parse(data.key))
+          .select("key")
+          .single(),
+      );
+    return json({ ok: true });
+  }
+  if (path === "admin/sources" && method === "GET")
+    return json(
+      checked(
+        await db
+          .from("club_sources")
+          .select("category,title,content,url")
+          .order("created_at", { ascending: false }),
+      ),
+    );
+  if (path === "admin/sources" && method === "POST") {
+    const items = z
+      .array(
+        z
+          .object({
+            category: z.enum(["form", "guide", "instagram", "sheet"]),
+            title: z.string().trim().min(1).max(150),
+            content: z.string().trim().max(20000),
+            url: z.union([z.literal(""), z.url().regex(/^https:\/\//i)]),
+          })
+          .refine(
+            (r) => Boolean(r.url || r.content),
+            "내용이나 주소가 필요합니다.",
+          ),
+      )
+      .min(1)
+      .max(100)
+      .parse(data.rows);
+    checked(
+      await db
+        .from("club_sources")
+        .upsert(items, { onConflict: "category,title" }),
+    );
+    return json({ ok: true });
   }
   if (path === "admin/events" && (method === "POST" || method === "PATCH")) {
     const input = eventSchema.parse(data);

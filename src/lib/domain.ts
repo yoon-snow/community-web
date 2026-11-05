@@ -10,9 +10,12 @@ export const positions = [
 ];
 export const eventKinds: Record<string, string> = {
   practice: "일반 운동",
-  lesson: "Lesson Day",
-  game: "Game Day",
-  match: "특별 경기",
+  lesson: "레슨데이",
+  game: "게임데이",
+  match: "교류전",
+  tournament: "대회",
+  social: "회식",
+  other: "기타",
   event: "이벤트",
   holiday: "휴무",
 };
@@ -27,13 +30,14 @@ export function normalizePhone(value: string) {
   const digits = value.replace(/[^\d+]/g, "");
   return digits.replace(/^\+?82(?:0)?/, "0");
 }
+const seoulDayFormat = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Seoul",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
 export function seoulDate(value: string | Date = new Date()) {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(value));
+  return seoulDayFormat.format(new Date(value));
 }
 export function formatDate(
   value: string,
@@ -136,7 +140,7 @@ export const eventSchema = z
     starts_at: z.string().datetime({ offset: true }),
     ends_at: z.string().datetime({ offset: true }),
     location: cleanText(200).min(1),
-    kind: z.enum(["practice", "lesson", "game", "match", "event", "holiday"]),
+    kind: z.string().regex(/^[a-z][a-z0-9_]{0,63}$/),
     description: cleanText(5000).default(""),
     guests_open: z.boolean(),
     is_emergency: z.boolean().default(false),
