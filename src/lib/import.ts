@@ -1,15 +1,26 @@
 import { z } from "zod";
 import { dateOnly, phone, uuid, cleanText, eventSchema } from "./domain";
 const external_id = cleanText(150).min(1);
+// Normalize explicit year/month/day dates only; never guess serials or US/EU dates.
+const importDate = z.preprocess((value) => {
+  if (typeof value !== "string") return value;
+  const text = value.trim();
+  const parts =
+    text.match(/^(\d{4})[-./]\s*(\d{1,2})[-./]\s*(\d{1,2})\.?$/) ||
+    text.match(/^(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일$/);
+  return parts
+    ? `${parts[1]}-${parts[2].padStart(2, "0")}-${parts[3].padStart(2, "0")}`
+    : text;
+}, dateOnly);
 export const importSchemas = {
   members: z.object({
     external_id,
     name: cleanText(80).min(1),
     phone,
-    birth_date: dateOnly.nullable().optional(),
+    birth_date: importDate.nullable().optional(),
     position: cleanText(80).default(""),
     experience: cleanText(200).default(""),
-    joined_on: dateOnly,
+    joined_on: importDate,
     admin_memo: cleanText(5000).default(""),
     status: z.enum(["active", "inactive", "withdrawn"]),
   }),
@@ -40,7 +51,7 @@ export const importSchemas = {
   membership_payments: z.object({
     external_id,
     member_id: uuid,
-    month: dateOnly.refine((v) => v.endsWith("-01")),
+    month: importDate.refine((v) => v.endsWith("-01")),
     amount: z.number().int().nonnegative(),
     status: z.enum(["paid", "unpaid", "exempt"]),
   }),
@@ -71,6 +82,7 @@ export function validateImport(entity: string, rows: unknown[]) {
   const errors: { row: number; message: string }[] = [];
   const data: Record<string, unknown>[] = [];
   const seen = new Set<string>();
+  const identities = new Set<string>();
   rows.forEach((row, i) => {
     const result = schema.safeParse(row);
     if (!result.success) {
@@ -94,7 +106,26 @@ export function validateImport(entity: string, rows: unknown[]) {
       });
       return;
     }
+    const identity =
+      entity === "members" || entity === "guests"
+        ? String(d.phone)
+        : entity === "guest_applications"
+          ? `${d.guest_id}:${d.event_id}`
+          : entity === "membership_payments"
+            ? `${d.member_id}:${d.month}`
+            : entity === "rules"
+              ? String(d.category)
+              : null;
+    if (identity && identities.has(identity)) {
+      errors.push({
+        row: i + 2,
+        message:
+          "같은 파일에 중복 사용자 또는 동일 기간·일정 기록이 있습니다. 원본을 확인해주세요.",
+      });
+      return;
+    }
     seen.add(key);
+    if (identity) identities.add(identity);
     data.push(d);
   });
   return { data, errors };
@@ -123,6 +154,7 @@ export const importColumns: Record<ImportEntity, string[]> = {
     "experience",
     "joined_on",
     "status",
+    "admin_memo",
   ],
   guests: ["external_id", "name", "phone", "position"],
   events: [

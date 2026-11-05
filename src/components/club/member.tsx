@@ -863,6 +863,7 @@ export function AccountScreen() {
               { href: "/profile", label: "내 프로필", icon: UserRound },
               { href: "/attendance", label: "내 출석", icon: CheckCircle2 },
               { href: "/dues", label: "내 회비", icon: Wallet },
+              { href: "/videos", label: "영상·재생목록", icon: Play },
               { href: "/uniform", label: "유니폼", icon: Shirt },
               { href: "/rules", label: "회칙", icon: BookOpen },
               { href: "/notifications", label: "알림", icon: Bell },

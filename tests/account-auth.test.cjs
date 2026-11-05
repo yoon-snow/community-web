@@ -309,7 +309,7 @@ test("recovery confirmation validates token type, strips the token from redirect
   ]);
   const fail = await loaded.confirm.GET(
     new Request(
-      "https://club.example.invalid/auth/confirm?token_hash=test-token&type=invite",
+      "https://club.example.invalid/auth/confirm?token_hash=test-token&type=unsupported",
     ),
   );
   assert.ok(fail.headers.get("location").endsWith("/account?error=auth"));
@@ -358,4 +358,39 @@ test("legacy login URL opens the own-account login form and never starts Google 
   );
   assert.ok(response.headers.get("location").endsWith("/account"));
   assert.deepEqual(loaded.calls, []);
+});
+
+test("verified invitations open password setup without granting member or admin access", async () => {
+  const loaded = loadAuth({
+    who: () => {
+      throw new Error("Invite must not query or create membership");
+    },
+  });
+  const result = await loaded.confirm.GET(
+    new Request(
+      "https://club.example.invalid/auth/confirm?token_hash=invite-token&type=invite",
+    ),
+  );
+  assert.equal(
+    new URL(result.headers.get("location")).pathname,
+    "/reset-password",
+  );
+  assert.equal(result.headers.get("cache-control"), "private, no-store");
+  assert.deepEqual(loaded.calls, [
+    ["verify", { token_hash: "invite-token", type: "invite" }],
+  ]);
+  const expired = loadAuth({
+    auth: {
+      verifyOtp: async () => ({
+        data: { user: null },
+        error: { code: "otp_expired" },
+      }),
+    },
+  });
+  const denied = await expired.confirm.GET(
+    new Request(
+      "https://club.example.invalid/auth/confirm?token_hash=expired&type=invite",
+    ),
+  );
+  assert.ok(denied.headers.get("location").endsWith("/account?error=auth"));
 });

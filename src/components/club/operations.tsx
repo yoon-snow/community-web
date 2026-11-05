@@ -744,6 +744,9 @@ export function ImportScreen() {
     setBusy(true);
     setError("");
     setPreview(null);
+    setSheets([]);
+    setConfirmed(false);
+    setComplete(false);
     try {
       if (file.size > 5_242_880)
         throw new Error("5MB 이하의 파일을 선택해주세요.");
@@ -768,7 +771,10 @@ export function ImportScreen() {
         }
       } else {
         const text = (await file.text()).replace(/^\uFEFF/, "");
-        next.push({ name: "CSV", rows: parseCsv(text) });
+        const rows = parseCsv(text);
+        if (rows.length > 2500 || rows.some((row) => row.length > 120))
+          throw new Error("파일은 2,500행·120열 이하로 나눠 업로드해주세요.");
+        next.push({ name: "CSV", rows });
       }
       setSheets(next);
       setTab(0);

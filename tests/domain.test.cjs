@@ -369,3 +369,48 @@ test("archive metadata normalizes playlists, uses only approved YouTube covers a
     }),
   );
 });
+
+test("Import normalizes explicit calendar dates and blocks identity collisions without guessing", () => {
+  const row = {
+    external_id: "new-1",
+    name: "가상회원",
+    phone: "010-1234-5678",
+    joined_on: "2026. 1. 2.",
+    birth_date: "1999년 10월 24일",
+    status: "active",
+  };
+  const normalized = imp.validateImport("members", [row]);
+  assert.equal(normalized.errors.length, 0);
+  assert.equal(normalized.data[0].joined_on, "2026-01-02");
+  assert.equal(normalized.data[0].birth_date, "1999-10-24");
+  assert.equal(
+    imp.validateImport("members", [
+      row,
+      { ...row, external_id: "new-2", phone: "+82 10 1234 5678" },
+    ]).errors.length,
+    1,
+  );
+  for (const joined_on of ["01/02/2026", "2026-02-30", 46000])
+    assert.equal(
+      imp.validateImport("members", [{ ...row, joined_on }]).errors.length,
+      1,
+    );
+  const payment = {
+    external_id: "fee-1",
+    member_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    month: "2026/10/1",
+    amount: 60000,
+    status: "paid",
+  };
+  assert.equal(
+    imp.validateImport("membership_payments", [payment]).data[0].month,
+    "2026-10-01",
+  );
+  assert.equal(
+    imp.validateImport("membership_payments", [
+      payment,
+      { ...payment, external_id: "fee-2", month: "2026-10-01" },
+    ]).errors.length,
+    1,
+  );
+});

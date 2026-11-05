@@ -379,7 +379,7 @@ export function GuestCard({
               {g.answers.experience || "미입력"}
             </p>
           </div>
-          <Badge tone={paid ? "green" : "gold"}>
+          <Badge tone={paid ? "green" : "warning"}>
             {paid ? "입금완료" : "입금확인 전"}
           </Badge>
         </div>

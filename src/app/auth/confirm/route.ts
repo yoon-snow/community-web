@@ -10,7 +10,10 @@ export async function GET(request: Request) {
   if (
     token &&
     token.length <= 2048 &&
-    (type === "email" || type === "signup" || type === "recovery")
+    (type === "email" ||
+      type === "signup" ||
+      type === "recovery" ||
+      type === "invite")
   ) {
     try {
       const db = await serverClient();
@@ -19,7 +22,8 @@ export async function GET(request: Request) {
         type,
       });
       if (!error) {
-        if (type === "recovery" && data.user) target = "/reset-password";
+        if ((type === "recovery" || type === "invite") && data.user)
+          target = "/reset-password";
         else {
           const who = await identity(db);
           if (who.user) target = accountDestination(who);

@@ -53,10 +53,13 @@
   --gold: #c9a227;
   --gold-light: #e4c968;
   --bg: #f7f7f5;
+  --card: #ffffff;
   --text: #101828;
   --muted: #667085;
   --border: #e8e9ec;
-  --green: #15803d;
+  --green: #16a34a;
+  --green-text: #15803d;
+  --warning: #f59e0b;
   --red: #dc2626;
   font-family:
     "S-Core Dream",
@@ -328,10 +331,10 @@ pre {
   gap: 2px;
   color: var(--muted);
   font-size: 11px;
-  min-height: 35px;
+  min-height: 44px;
 }
 .card {
-  background: #fff;
+  background: var(--card);
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 20px;
@@ -472,6 +475,14 @@ pre {
 .badge.green {
   background: #edf7ef;
   color: #18733a;
+  box-shadow: inset 3px 0 var(--green);
+  padding-left: 10px;
+}
+.badge.warning {
+  background: #fffbeb;
+  color: #92400e;
+  box-shadow: inset 3px 0 var(--warning);
+  padding-left: 10px;
 }
 .badge.red {
   background: #fef0f0;
@@ -621,7 +632,7 @@ pre {
   margin-top: 8px;
 }
 .stat.green strong {
-  color: var(--green);
+  color: var(--green-text);
 }
 .guest-cta {
   display: flex;

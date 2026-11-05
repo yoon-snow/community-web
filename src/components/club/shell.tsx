@@ -12,7 +12,6 @@ import {
   Info,
   LogIn,
   MoreHorizontal,
-  Play,
   ShieldCheck,
   UserRound,
   Users,
@@ -210,16 +209,19 @@ export default function ClubApp() {
         { href: "/admin/calendar", label: "일정", icon: CalendarDays },
         { href: "/admin/more", label: "더보기", icon: MoreHorizontal },
       ]
-    : [
-        { href: "/", label: "홈", icon: Home },
-        { href: "/calendar", label: "일정", icon: CalendarDays },
-        {
-          href: boot.member ? "/videos" : "/notices",
-          label: boot.member ? "영상" : "공지",
-          icon: boot.member ? Play : ClipboardList,
-        },
-        { href: "/account", label: "내 정보", icon: UserRound },
-      ];
+    : boot.member
+      ? [
+          { href: "/", label: "홈", icon: Home },
+          { href: "/calendar", label: "일정", icon: CalendarDays },
+          { href: "/attendance", label: "출석", icon: CheckCircle2 },
+          { href: "/account", label: "내 정보", icon: UserRound },
+        ]
+      : [
+          { href: "/", label: "홈", icon: Home },
+          { href: "/calendar", label: "일정", icon: CalendarDays },
+          { href: "/apply", label: "신청", icon: ClipboardList },
+          { href: "/notices", label: "공지", icon: Bell },
+        ];
   return (
     <Context.Provider value={context}>
       <div className="app-shell">

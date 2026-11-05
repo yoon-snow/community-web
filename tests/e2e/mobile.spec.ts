@@ -64,11 +64,18 @@ test("member preview: RSVP counts, private activity, video empty state, navigati
 }) => {
   await page.goto("/preview?role=member");
   await expect(page.getByText("게스트 예정", { exact: false })).toBeVisible();
-  await page.getByRole("link", { name: "내 정보", exact: true }).click();
+  await page
+    .getByRole("navigation", { name: "주 메뉴" })
+    .getByRole("link", { name: "내 정보", exact: true })
+    .click();
   await page.getByRole("link", { name: "내 회비" }).click();
   await expect(page.getByRole("heading", { name: "내 회비" })).toBeVisible();
   await expect(page.getByText("본인의 회비 정보만 표시됩니다.")).toBeVisible();
-  await page.getByRole("link", { name: "영상", exact: true }).click();
+  await page
+    .getByRole("navigation", { name: "주 메뉴" })
+    .getByRole("link", { name: "내 정보", exact: true })
+    .click();
+  await page.getByRole("link", { name: "영상·재생목록", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "아직 등록된 영상이 없어요" }),
   ).toBeVisible();
@@ -148,7 +155,7 @@ test("S-Core Dream loads locally and role picker opens the corresponding home/na
   await expect(
     page
       .getByRole("navigation", { name: "주 메뉴" })
-      .getByRole("link", { name: "영상", exact: true }),
+      .getByRole("link", { name: "출석", exact: true }),
   ).toBeVisible();
   expect(
     await page.evaluate(async () => {
@@ -858,7 +865,7 @@ test("membership form records guest participation and payment response, then sho
     await expect(
       page
         .getByRole("navigation", { name: "주 메뉴" })
-        .getByRole("link", { name: "영상", exact: true }),
+        .getByRole("link", { name: "출석", exact: true }),
     ).toHaveCount(0);
   }
   approved = true;
@@ -867,7 +874,7 @@ test("membership form records guest participation and payment response, then sho
   await expect(
     page
       .getByRole("navigation", { name: "주 메뉴" })
-      .getByRole("link", { name: "영상", exact: true }),
+      .getByRole("link", { name: "출석", exact: true }),
   ).toBeVisible();
 });
 
@@ -1199,7 +1206,7 @@ test("email signin shows a generic error then loads the approved member home wit
   await expect(
     page
       .getByRole("navigation", { name: "주 메뉴" })
-      .getByRole("link", { name: "영상", exact: true }),
+      .getByRole("link", { name: "출석", exact: true }),
   ).toBeVisible();
   expect(payloads).toHaveLength(2);
   expect(Object.keys(payloads[1]).sort()).toEqual(["email", "password"]);
