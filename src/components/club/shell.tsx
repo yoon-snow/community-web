@@ -278,7 +278,7 @@ export default function ClubApp() {
         {preview && (
           <div className="preview-bar">
             <span>미리보기 · 가상 데이터</span>
-            <Link href="/admin/more">미리보기 종료</Link>
+            <Link href="/">미리보기 종료</Link>
             <select
               aria-label="미리보기 역할"
               value={boot.role}

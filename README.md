@@ -42,7 +42,7 @@ npm run dev
 
 - 앱: `http://localhost:3000`
 - UI 미리보기: `http://localhost:3000/preview?role=guest`, `?role=member`, `/preview/admin?role=admin`
-- 미리보기는 개발 환경에서만 기본 허용됩니다. 가상 데이터 표시가 고정되며 실제 쓰기를 수행하지 않습니다. Production에서는 `NEXT_PUBLIC_ENABLE_PREVIEW=false`를 유지하세요.
+- 미리보기는 운영 환경에서도 로그인 없이 게스트·회원·관리자 역할로 열 수 있습니다. 가상 데이터만 표시하며 실제 쓰기를 수행하지 않습니다. 실제 관리자 API와 DB 권한은 그대로 유지됩니다.
 - DB 미설정 시 준비 중 화면과 로그인 비활성 상태를 표시합니다. 실제 회원·게스트 숫자를 가상으로 채우지 않습니다.
 
 ## 환경변수
@@ -62,7 +62,7 @@ npm run dev
 | NEXT_PUBLIC_VAPID_PUBLIC_KEY / VAPID_PUBLIC_KEY | 동일한 Web Push 공개 키                                   |
 | VAPID_PRIVATE_KEY / VAPID_SUBJECT               | 서버 전용 비밀 키 / 실제 운영자 mailto 주소               |
 | CRON_SECRET                                     | `openssl rand -hex 32` 등으로 생성한 예약 작업용 비밀 값  |
-| NEXT_PUBLIC_ENABLE_PREVIEW                      | Production은 false                                        |
+
 | MONGODB_URI                                     | 기존 진단용 선택값; 클럽 앱에는 불필요                    |
 
 기존 개인정보 안내에는 “일정 기간”만 있어 실제 보관 일수와 문의처를 임의 결정하지 않았습니다. 개인정보 안내 3개 값이 없으면 실제 신청 접수를 차단합니다. 수동 삭제/보관 정책의 운영 절차도 확정하세요. 보관 기간을 입력했다는 이유만으로 자동 삭제 작업이 실행되는 것은 아닙니다.
