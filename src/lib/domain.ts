@@ -98,14 +98,35 @@ export const applicationSchema = z.object({
   rule_versions: z.record(z.string(), z.number().int().positive()),
   extra_answers: z.record(z.string(), z.string().max(2000)).default({}),
 });
-export const guestSchema = applicationSchema.extend({
-  event_id: uuid,
-  notice_consent: z.literal(true),
-  question_versions: z.record(uuid, z.number().int().positive()),
-  announcement_versions: z
-    .record(uuid, z.number().int().positive())
-    .default({}),
-});
+export function guestAgeGroup(
+  birth: unknown,
+  today = seoulDate(),
+): "adult" | "minor" | "unknown" {
+  if (
+    typeof birth !== "string" ||
+    !dateOnly.safeParse(birth).success ||
+    birth > today
+  )
+    return "unknown";
+  const age =
+    Number(today.slice(0, 4)) -
+    Number(birth.slice(0, 4)) -
+    (today.slice(5) < birth.slice(5) ? 1 : 0);
+  return age >= 19 ? "adult" : "minor";
+}
+export const guestSchema = applicationSchema
+  .extend({
+    event_id: uuid,
+    notice_consent: z.literal(true),
+    question_versions: z.record(uuid, z.number().int().positive()),
+    announcement_versions: z
+      .record(uuid, z.number().int().positive())
+      .default({}),
+  })
+  .refine(
+    (v) => guestAgeGroup(v.birth_date) === "adult",
+    "게스트 신청은 신청일 기준 만 19세 이상만 가능합니다.",
+  );
 export const membershipSchema = applicationSchema
   .extend({
     current_month_guest_participated: z.boolean(),

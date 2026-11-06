@@ -56,6 +56,7 @@ import { Emergency, EventCard, NoticeCard } from "./public";
 import { ExportSheet } from "./operations";
 import { NoticeEditor } from "./admin-forms";
 
+import { DailyGuests } from "./daily-guests";
 export function AdminHome() {
   const { boot, link } = useApp();
   const [selectedEvent, setSelectedEvent] = useState("");
@@ -70,6 +71,7 @@ export function AdminHome() {
         title="오늘도, 함께 빛나게"
         description={`${boot.member?.name || "운영진"}님, 오늘의 운영 현황이에요.`}
       />
+      <DailyGuests />
       <Resource resource={dashboard}>
         {(d) => {
           const event = d.event;

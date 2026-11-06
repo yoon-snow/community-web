@@ -128,15 +128,17 @@ export function ApplicationForm({
   const label = (field: string, fallback: string) =>
     question(field)?.label || fallback;
   const hint = (field: string) => question(field)?.help_text || undefined;
-  const versions = Object.fromEntries(
-    boot.rules
-      .filter((r: ClubRow) =>
-        r.rule_versions?.some(
-          (v: ClubRow) => v.version === r.current_version && v.published,
-        ),
-      )
-      .map((r: ClubRow) => [r.id, r.current_version]),
-  );
+  const versions =
+    boot.intakeRuleVersions ??
+    Object.fromEntries(
+      boot.rules
+        .filter((r: ClubRow) =>
+          r.rule_versions?.some(
+            (v: ClubRow) => v.version === r.current_version && v.published,
+          ),
+        )
+        .map((r: ClubRow) => [r.id, r.current_version]),
+    );
   const agreementSignature = JSON.stringify({
     rules: versions,
     notices: membership ? {} : noticeVersions(confirmedNotices),
@@ -405,12 +407,21 @@ export function ApplicationForm({
             />
             <Field
               label={label("birth_date", "생년월일")}
-              hint={hint("birth_date")}
+              hint={
+                membership
+                  ? hint("birth_date")
+                  : "게스트는 신청일 기준 만 19세 이상만 신청할 수 있습니다."
+              }
               name="birth_date"
               type="date"
               value={values.birth_date}
               required
-              max={seoulDate()}
+              max={
+                membership
+                  ? seoulDate()
+                  : String(Number(seoulDate().slice(0, 4)) - 19) +
+                    seoulDate().slice(4)
+              }
             />
             <Field
               label={label("gender", "성별")}
@@ -599,20 +610,21 @@ export function ApplicationForm({
                     <p>{n.content}</p>
                   </details>
                 ))}
-              {boot.rules.map((r: ClubRow) => (
-                <details key={r.id}>
-                  <summary>
-                    {r.title} · v{r.current_version}
-                  </summary>
-                  <p>
-                    {
-                      r.rule_versions?.find(
-                        (v: ClubRow) => v.version === r.current_version,
-                      )?.content
-                    }
-                  </p>
-                </details>
-              ))}
+              {boot.member &&
+                boot.rules.map((r: ClubRow) => (
+                  <details key={r.id}>
+                    <summary>
+                      {r.title} · v{r.current_version}
+                    </summary>
+                    <p>
+                      {
+                        r.rule_versions?.find(
+                          (v: ClubRow) => v.version === r.current_version,
+                        )?.content
+                      }
+                    </p>
+                  </details>
+                ))}
             </div>
             {!membership && (
               <label className="checkbox">
@@ -647,12 +659,7 @@ export function ApplicationForm({
                 }
               />
               <span>
-                {membership
-                  ? "공지 및 참가 규정·회칙을 확인하고 동의합니다. (필수)"
-                  : label(
-                      "rules_consent",
-                      "게스트 참가 규정·회칙을 확인하고 동의합니다. (필수)",
-                    )}
+                운동 일정과 참가 안내를 확인하고 동의합니다. (필수)
                 {hint("rules_consent") && (
                   <small className="micro">{hint("rules_consent")}</small>
                 )}
@@ -902,11 +909,13 @@ export function AccountScreen() {
           <span>홈 화면에 앱 설치</span>
           <ChevronRight size={18} />
         </button>
-        <Link href={link("/rules")}>
-          <BookOpen size={20} />
-          <span>SpotLight 회칙</span>
-          <ChevronRight size={18} />
-        </Link>
+        {boot.member && (
+          <Link href={link("/rules")}>
+            <BookOpen size={20} />
+            <span>SpotLight 회칙</span>
+            <ChevronRight size={18} />
+          </Link>
+        )}
         {boot.user && !boot.preview && (
           <form action="/auth/logout" method="post">
             <button>

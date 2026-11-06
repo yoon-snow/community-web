@@ -191,6 +191,7 @@ export function Emergency() {
           긴급공지{urgent.length > 1 ? ` · ${urgent.length}건` : ""}
         </small>
         <strong>{n.title}</strong>
+        <p className="urgent-excerpt">{n.content}</p>
       </div>
       <ChevronRight size={18} />
     </Link>
@@ -499,10 +500,12 @@ export function CalendarScreen() {
           );
         }}
       </Resource>
-      <Link className="button secondary full" href={link("/rules")}>
-        <BookOpen size={17} />
-        운동 전 참가 안내 확인
-      </Link>
+      {boot.member && (
+        <Link className="button secondary full" href={link("/rules")}>
+          <BookOpen size={17} />
+          클럽 회칙 보기
+        </Link>
+      )}
       {boot.role === "admin" && <ScheduleTools kinds={kinds} />}
       {editor && <EventEditor day={selected} close={() => setEditor(false)} />}
     </>
@@ -775,14 +778,10 @@ export function GuestGuide() {
                 ))
               ) : (
                 <p className="hint">
-                  현재 등록된 공개 안내가 없습니다. 신청서에서 참가 규정과
-                  회칙을 확인해주세요.
+                  현재 등록된 공개 공지가 없습니다. 신청서에서 운동 일정과 참가
+                  안내를 확인해주세요.
                 </p>
               )}
-              <Link href={link("/rules")} className="button secondary full">
-                <BookOpen size={17} />
-                회칙 확인
-              </Link>
               <label className="checkbox">
                 <input
                   type="checkbox"
@@ -824,40 +823,62 @@ export function GuestGuide() {
 export function RulesScreen() {
   const { boot } = useApp();
   const [edit, setEdit] = useState(false);
+  if (!boot.member)
+    return (
+      <Empty icon={BookOpen} title="회원 전용 회칙입니다">
+        승인된 회원 계정으로 로그인하면 열람할 수 있습니다.
+      </Empty>
+    );
+  const articles: ClubRow[] = (boot.rules as ClubRow[]).flatMap((r) => {
+    const version = r.rule_versions?.find(
+      (v: ClubRow) => v.version === r.current_version && v.published,
+    );
+    return version ? [{ ...r, version }] : [];
+  });
   return (
     <>
       <PageTitle
-        eyebrow="PLAY FAIR"
-        title="함께 지키는 약속"
+        eyebrow="CLUB HANDBOOK"
+        title="SpotLight 회칙"
         action={
           boot.role === "admin" ? (
-            <button
-              className="icon-button bordered"
-              aria-label="회칙 개정"
-              onClick={() => setEdit(true)}
-            >
-              <Plus />
+            <button className="button secondary" onClick={() => setEdit(true)}>
+              회칙 개정
             </button>
           ) : null
         }
       />
-      {boot.rules.length ? (
-        boot.rules.map((r: ClubRow) => {
-          const version = r.rule_versions?.find(
-            (v: ClubRow) => v.version === r.current_version && v.published,
-          );
-          return version ? (
-            <details className="card rule" key={r.id}>
-              <summary>
-                <strong>{r.title}</strong>
-                <Badge>v{r.current_version}</Badge>
-              </summary>
-              <p>{version.content}</p>
-            </details>
-          ) : null;
-        })
+      {articles.length ? (
+        <>
+          <nav className="handbook-index card" aria-label="회칙 목차">
+            <h2>목차</h2>
+            {articles.map((r, i) => (
+              <a key={r.id} href={"#rule-" + r.id}>
+                <span>{String(i + 1).padStart(2, "0")}</span>
+                {r.title}
+              </a>
+            ))}
+          </nav>
+          {articles.map((r, i) => (
+            <article
+              className="card handbook-article"
+              id={"rule-" + r.id}
+              key={r.id}
+            >
+              <header>
+                <small>
+                  {String(i + 1).padStart(2, "0")} /{" "}
+                  {String(articles.length).padStart(2, "0")}
+                </small>
+                <Badge>제 {r.current_version}판</Badge>
+              </header>
+              <h2>{r.title}</h2>
+              <div className="handbook-content">{r.version.content}</div>
+            </article>
+          ))}
+        </>
       ) : (
-        <Empty icon={BookOpen} title="회칙을 준비 중이에요" />
+        <Empty icon={BookOpen} title="게시된 회칙이 없습니다" />
       )}
       {edit && (
         <Modal title="회칙 개정" close={() => setEdit(false)}>

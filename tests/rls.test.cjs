@@ -2464,3 +2464,41 @@ test("weekly schedule fills Korea dates once, preserves edits, and limits operat
   );
   await assert.rejects(as("anon", null, "select * from public.club_sources"));
 });
+
+test("rules contents are member-only while intake version identifiers remain available", async () => {
+  const anonRules = await as("anon", null, "select * from public.rules");
+  assert.equal(anonRules.rows.length, 0);
+  assert.equal(
+    (await as("anon", null, "select * from public.rule_versions")).rows.length,
+    0,
+  );
+  assert.equal(
+    (
+      await as(
+        "authenticated",
+        "77777777-7777-4777-8777-777777777777",
+        "select * from public.rule_versions",
+      )
+    ).rows.length,
+    0,
+  );
+  assert.ok(
+    (await memberQuery("select * from public.rule_versions where published"))
+      .rows.length > 0,
+  );
+  const tokens = await as(
+    "anon",
+    null,
+    "select public.intake_rule_versions() as versions",
+  );
+  assert.ok(Object.keys(tokens.rows[0].versions).length > 0);
+  assert.ok(
+    Object.values(tokens.rows[0].versions).every((v) => Number.isInteger(v)),
+  );
+  await assert.rejects(memberQuery("select public.admin_daily_guests()"));
+  await assert.rejects(as("anon", null, "select public.admin_daily_guests()"));
+  const days = (await adminQuery("select public.admin_daily_guests() as days"))
+    .rows[0].days;
+  assert.equal(days.length, 2);
+  assert.ok(Array.isArray(days[0].events));
+});

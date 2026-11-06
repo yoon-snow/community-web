@@ -414,3 +414,11 @@ test("Import normalizes explicit calendar dates and blocks identity collisions w
     1,
   );
 });
+
+test("guest age filter treats 19th birthday as adult and keeps missing/invalid dates separate", () => {
+  assert.equal(d.guestAgeGroup("2007-11-06", "2026-11-06"), "adult");
+  assert.equal(d.guestAgeGroup("2007-11-07", "2026-11-06"), "minor");
+  assert.equal(d.guestAgeGroup("2026-02-30", "2026-11-06"), "unknown");
+  assert.equal(d.guestAgeGroup("2027-01-01", "2026-11-06"), "unknown");
+  assert.equal(d.guestAgeGroup(null, "2026-11-06"), "unknown");
+});

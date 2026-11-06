@@ -5,6 +5,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   Bell,
+  Moon,
+  Sun,
   RefreshCw,
   CalendarDays,
   CheckCircle2,
@@ -94,6 +96,23 @@ export default function ClubApp() {
   const params = useSearchParams();
   const router = useRouter();
   const preview = pathname.startsWith("/preview");
+  const [dark, setDark] = useState(false);
+  useEffect(() => {
+    const preference = localStorage.getItem("spotlight-theme");
+    setDark(
+      preference
+        ? preference === "dark"
+        : window.matchMedia("(prefers-color-scheme: dark)").matches,
+    );
+  }, []);
+  useEffect(() => {
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  }, [dark]);
+  const toggleTheme = () => {
+    const next = !dark;
+    setDark(next);
+    localStorage.setItem("spotlight-theme", next ? "dark" : "light");
+  };
   const [boot, setBoot] = useState<any>(null);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
@@ -285,6 +304,14 @@ export default function ClubApp() {
             <Brand />
           </Link>
           <div className="app-bar-actions">
+            <button
+              className="icon-button"
+              aria-label={dark ? "라이트모드로 변경" : "다크모드로 변경"}
+              aria-pressed={dark}
+              onClick={toggleTheme}
+            >
+              {dark ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
             <button
               className="icon-button"
               aria-label="새로고침"

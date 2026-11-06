@@ -340,6 +340,26 @@ export function previewResource(path: string, boot: ClubRow): any {
       total: rows.length,
     };
   }
+  if (path === "admin/daily-guests")
+    return [
+      { day: seoulDate(), events: [] },
+      {
+        day: seoulDate(event.starts_at),
+        events: [
+          {
+            ...event,
+            applications: guestRows.map((g: ClubRow) => ({
+              id: g.id,
+              name: g.answers.name || g.guests.name,
+              birth_date: g.answers.birth_date,
+              position: g.answers.position || g.guests.position,
+              experience: g.answers.experience,
+              payment: g.guest_payments.status,
+            })),
+          },
+        ],
+      },
+    ];
   if (path.startsWith("admin/dashboard")) {
     const selected =
       boot.events.find((e: ClubRow) => e.id === query.get("event")) || event;

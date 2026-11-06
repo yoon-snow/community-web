@@ -135,7 +135,9 @@ async function processRequest(request: Request, segments: string[]) {
         .order("priority")
         .order("created_at", { ascending: false })
         .limit(40),
-      db.from("rules").select("*,rule_versions(*)").order("category"),
+      who.member
+        ? db.from("rules").select("*,rule_versions(*)").order("category")
+        : Promise.resolve({ data: [], error: null }),
       db
         .from("form_questions")
         .select("*")
@@ -175,6 +177,9 @@ async function processRequest(request: Request, segments: string[]) {
     return json({
       configured: true,
       scheduleKinds,
+      intakeRuleVersions: who.member
+        ? undefined
+        : checked(await db.rpc("intake_rule_versions")),
       role: who.admin ? "admin" : who.member ? "member" : "guest",
       user: who.user ? { id: who.user.id, email: who.user.email } : null,
       member: who.member ? { ...who.member, avatar_url } : null,
@@ -733,6 +738,8 @@ async function processRequest(request: Request, segments: string[]) {
     });
     return json({ ok: true });
   }
+  if (path === "admin/daily-guests" && method === "GET")
+    return json(checked(await db.rpc("admin_daily_guests")));
   if (path === "admin/guests" && method === "GET") {
     let q = db
       .from("guest_applications")
@@ -1140,12 +1147,10 @@ async function processRequest(request: Request, segments: string[]) {
       .parse(data);
     if (method === "POST")
       checked(
-        await db
-          .from("schedule_kinds")
-          .insert({
-            ...item,
-            key: "custom_" + crypto.randomUUID().replaceAll("-", ""),
-          }),
+        await db.from("schedule_kinds").insert({
+          ...item,
+          key: "custom_" + crypto.randomUUID().replaceAll("-", ""),
+        }),
       );
     else
       checked(
