@@ -9,6 +9,10 @@ test("guest rules stay private, emergency is prominent, and dark preference surv
   );
   await page.getByRole("button", { name: "다크모드로 변경" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(page.locator(".greeting h1")).toHaveCSS(
+    "color",
+    "rgb(241, 245, 251)",
+  );
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.goto("/preview/rules?role=guest");

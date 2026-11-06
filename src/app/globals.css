@@ -2239,3 +2239,32 @@ i.match {
     font-size: 16px;
   }
 }
+
+[data-theme="dark"] .greeting h1,
+[data-theme="dark"] .count-row b,
+[data-theme="dark"] .attendance-months dd,
+[data-theme="dark"] .text-button,
+[data-theme="dark"] .initial-loading {
+  color: var(--text);
+}
+[data-theme="dark"] .participation,
+[data-theme="dark"] .guest-cta,
+[data-theme="dark"] .circle-icon,
+[data-theme="dark"] .notice-card,
+[data-theme="dark"] .menu-list,
+[data-theme="dark"] .menu-list > form > button,
+[data-theme="dark"] .list-card,
+[data-theme="dark"] .list-icon,
+[data-theme="dark"] .search-box,
+[data-theme="dark"] .notification-card,
+[data-theme="dark"] .notification-card.unread,
+[data-theme="dark"] .task-list,
+[data-theme="dark"] .task-icon,
+[data-theme="dark"] .guest-event,
+[data-theme="dark"] .month-input,
+[data-theme="dark"] .filter-row > input,
+[data-theme="dark"] .filter-row > select {
+  background: var(--card);
+  color: var(--text);
+  border-color: var(--border);
+}
