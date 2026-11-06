@@ -1,0 +1,22 @@
+-- Repair observed mojibake only. UTF-8 hex literals survive SQL-editor encoding.
+-- The existing question-version trigger records the corrected revision.
+with correction(field_key,old_label,new_label) as (values
+('name',convert_from(decode('efbfbdeb8c80ecabab','hex'),'UTF8'),convert_from(decode('ec9db4eba684','hex'),'UTF8')),
+('birth_date',convert_from(decode('efbfbdec95b8eb8088efbfbdebb6bfec94aa','hex'),'UTF8'),convert_from(decode('ec839deb8584ec9b94ec9dbc','hex'),'UTF8')),
+('gender',convert_from(decode('efbfbdeab985ed808e','hex'),'UTF8'),convert_from(decode('ec84b1ebb384','hex'),'UTF8')),
+('phone',convert_from(decode('efbfbdeab395ec94abefa7a3efbfbd','hex'),'UTF8'),convert_from(decode('ec97b0eb9dbdecb298','hex'),'UTF8')),
+('position',convert_from(decode('efbfbdd189ecada920efbfbdd18aefbfbdefbfbdefbfbd','hex'),'UTF8'),convert_from(decode('ed9daceba79d20ed8faceca780ec8598','hex'),'UTF8')),
+('experience',convert_from(decode('e8ab9beab38ceb8e8420e5af83ec8e88eca0b0','hex'),'UTF8'),convert_from(decode('ebb0b0eab5ac20eab2bdeba0a5','hex'),'UTF8')),
+('source',convert_from(decode('53706f744c69676874e7919cefbfbd20efbfbdeb9aadecbeb620efbfbdefbfbd20e5af83ec8e88eca488','hex'),'UTF8'),convert_from(decode('53706f744c69676874eba5bc20ec958ceab28c20eb909c20eab2bdeba19c','hex'),'UTF8')),
+('notes',convert_from(decode('e6b9b2eab3a0efbfbd20efbfbdebbaa4ec94a4efbfbdd18bebb98620e8ab9befbfbd20efa79eeb8d88d0a6','hex'),'UTF8'),convert_from(decode('eab8b0ed838020ed9995ec9db8ec82aced95ad20ebb08f20eca788ebacb8','hex'),'UTF8')),
+('event_id',convert_from(decode('efa7a1ebaa84ebbfacefbfbdefbfbd20efbfbdeb8c80eba39e','hex'),'UTF8'),convert_from(decode('ecb0b8ec97aced95a020ec9ab4eb8f99','hex'),'UTF8')),
+('notice_consent',convert_from(decode('e680a8eb93adefbfbdefbfbdd18bebb986efbfbdefbfbd20efbfbdebbaa4ec94a4efbfbdeb8d89eb92bfefbfbdeb8d88eb968e2e2028efbfbdeabea9eb8b9429','hex'),'UTF8'),convert_from(decode('eab3b5eca780ec82aced95adec9d8420ed9995ec9db8ed9688ec8ab5eb8b88eb8ba42e2028ed9584ec889829','hex'),'UTF8')),
+('rules_consent',convert_from(decode('e5af83eb9aafeb92aaefbfbdefbfbd20efa7a1eba9b8efbfbd20e6b4b9ec9296eca099eca88cefbfbdeb9aafed8a83efbfbdefbfbd20efbfbdebbaa4ec94a4efbfbdec848ded80ac20efbfbdec8888ec93bdefbfbde291b8eb95b2efbfbdefbfbd2e2028efbfbdeabea9eb8b9429','hex'),'UTF8'),convert_from(decode('ec9ab4eb8f9920ec9dbceca095eab3bc20ecb0b8eab08020ec9588eb82b4eba5bc20ed9995ec9db8ed9598eab3a020eb8f99ec9d98ed95a9eb8b88eb8ba42e2028ed9584ec889829','hex'),'UTF8')),
+('photo_consent',convert_from(decode('efbfbdec9295eba39e20efbfbdd18aecad8aeca88cefbfbdeab3b8eab8bdefbfbdefbfbd20efbfbdec8889ec8387efbfbdefbfbd20e6b9b2eab395eca48920e8ab9befbfbd20efbfbdeb9dbeeb82abefbfbdefbfbd20efbfbdec9296ec8a9cefbfbdec848eeb929720efbfbdeb8d88eab6a1e7919cefbfbd20efbfbdebbaa4ec94a4efbfbdec848ded80ac20efbfbdec8888ec93bdefbfbde291b8eb95b2efbfbdefbfbd2e2028efbfbdeabea9eb8b9429','hex'),'UTF8'),convert_from(decode('ed999ceb8f9920ec82aceca784c2b7ec9881ec8381ec9db420eb8f99ed98b8ed9a8c20eab8b0eba19d20ebb08f20ed998debb3b4ec979020ed999cec9aa9eb9098eb8a9420ec9588eb82b4eba5bc20ed9995ec9db8ed9598eab3a020eb8f99ec9d98ed95a9eb8b88eb8ba42e2028ed9584ec889829','hex'),'UTF8')),
+('privacy_consent',convert_from(decode('e5aa9bec9296ec94a4efbfbdebbaa3eb82ab20efbfbdec848fecad9beca88cefbfbdeb8c81ec8a9cefbfbdefbfbd20efbfbdec8888ec93bdefbfbde291b8eb95b2efbfbdefbfbd2e2028efbfbdeabea9eb8b9429','hex'),'UTF8'),convert_from(decode('eab09cec9db8eca095ebb3b420ec8898eca791c2b7ec9db4ec9aa9ec979020eb8f99ec9d98ed95a9eb8b88eb8ba42e2028ed9584ec889829','hex'),'UTF8')),
+('self_reported_paid',convert_from(decode('efbfbdeb8283ed8891efbfbdefbfbd20efbfbdeabea8eca6baefbfbdec848feb80b2efbfbdec848fec8a823f','hex'),'UTF8'),convert_from(decode('ec9e85eab888ec9d8420ec9984eba38ced9598ec85a8eb8298ec9a943f','hex'),'UTF8')),
+('fee_acknowledgement',convert_from(decode('efbfbdeb8c81ec81baefa79eeabea9ec93bd20efbfbde385bceca0a320efbfbdeb8283ed889120efbfbdebbaa4ec94a420efbfbdefbfbd20efbfbdebbaa4eca099efbfbde291a5ec93a320efbfbdeb8c84ebb990efbfbdeb8d89eb92bfefbfbdeb8d88eb968e2e','hex'),'UTF8'),convert_from(decode('ec9ab4ec9881eca784ec9d9820ec8ba4eca09c20ec9e85eab88820ed9995ec9db820ed9b8420ed9995eca095eb90a8ec9d8420ec9db4ed95b4ed9688ec8ab5eb8b88eb8ba42e','hex'),'UTF8'))
+)
+update public.form_questions q set label=c.new_label
+from correction c where q.form='guest' and q.is_system
+and q.field_key=c.field_key and q.label=c.old_label and q.label<>c.new_label;
