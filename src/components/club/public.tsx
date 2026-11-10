@@ -21,6 +21,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import {
+  monthBounds,
   eventKinds,
   sortAnnouncements,
   canApplyAsGuest,
@@ -358,7 +359,25 @@ export function CalendarScreen() {
   const [month, setMonth] = useState(seoulDate().slice(0, 7));
   const [selected, setSelected] = useState(seoulDate());
   const [editor, setEditor] = useState(false);
-  const resource = useResource(`events?month=${month}`);
+  const bounds = monthBounds(month);
+  const covered =
+    boot.eventCoverage &&
+    boot.eventCoverage.from <= bounds.start &&
+    boot.eventCoverage.until >= bounds.end &&
+    Date.now() - boot.eventCoverage.generatedAt < 30000;
+  const remote = useResource(covered ? null : `events?month=${month}`);
+  const snapshot = useMemo(
+    () =>
+      covered
+        ? boot.events.filter((event: ClubEvent) =>
+            seoulDate(event.starts_at).startsWith(month),
+          )
+        : null,
+    [boot.events, covered, month],
+  );
+  const resource = snapshot
+    ? { data: snapshot, loading: false, error: "" }
+    : remote;
   const days = useMemo(() => {
     const groups = new Map<string, ClubEvent[]>();
     for (const event of resource.data || []) {

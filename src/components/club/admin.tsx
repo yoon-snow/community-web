@@ -53,8 +53,16 @@ import {
   paymentLabel,
 } from "./core";
 import { Emergency, EventCard, NoticeCard } from "./public";
-import { ExportSheet } from "./operations";
-import { NoticeEditor } from "./admin-forms";
+import dynamic from "next/dynamic";
+import { Loader } from "./core";
+const ExportSheet = dynamic(
+  () => import("./operations").then((m) => m.ExportSheet),
+  { loading: Loader },
+);
+const NoticeEditor = dynamic(
+  () => import("./admin-forms").then((m) => m.NoticeEditor),
+  { loading: Loader },
+);
 
 import { DailyGuests } from "./daily-guests";
 export function AdminHome() {

@@ -187,6 +187,12 @@ async function processRequest(request: Request, segments: string[]) {
     return json({
       configured: true,
       scheduleKinds,
+      // A capped query only guarantees completeness before its last timestamp.
+      eventCoverage: {
+        from: start.toISOString(),
+        until: events?.length === 100 ? new Date(events[99].starts_at).toISOString() : end.toISOString(),
+        generatedAt: Date.now(),
+      },
       intakeRuleVersions: intake ? checked(intake) : undefined,
       role: who.admin ? "admin" : who.member ? "member" : "guest",
       user: who.user ? { id: who.user.id, email: who.user.email } : null,

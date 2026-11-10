@@ -72,6 +72,7 @@ const SupportThread = dynamic(() => import("./support").then((m) => m.Thread), {
 const FaqEditor = dynamic(() => import("./support").then((m) => m.FaqEditor), {
   loading: Loader,
 });
+import { LoadTime } from "./load-time";
 import { SupportLinks } from "./support-links";
 const AdminHome = dynamic(() => import("./admin").then((m) => m.AdminHome), {
   loading: Loader,
@@ -389,6 +390,7 @@ export default function ClubApp() {
           </div>
         )}
         <main id="main-content" className="content" key={screen}>
+          {params.get("measure") === "1" && <LoadTime screen={screen} />}
           {adminScreen && boot.role !== "admin" ? (
             <Empty icon={ShieldCheck} title="운영진 권한이 필요해요">
               SpotLight에 로그인한 뒤 승인된 운영진 계정으로 이용해주세요.
