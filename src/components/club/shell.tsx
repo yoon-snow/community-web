@@ -21,7 +21,6 @@ import {
   WifiOff,
 } from "lucide-react";
 
-import { previewData } from "@/lib/preview";
 import { ResetPasswordScreen } from "./auth";
 
 import { api, Loader, Empty, ErrorBoxStandalone, Brand, Context } from "./core";
@@ -33,15 +32,33 @@ import {
   RulesScreen,
   GuestGuide,
 } from "./public";
-import {
-  ApplicationForm,
-  AccountScreen,
-  ProfileScreen,
-  MyActivity,
-  NotificationsScreen,
-  VideosScreen,
-  VideoDetailScreen,
-} from "./member";
+const ApplicationForm = dynamic(
+  () => import("./member").then((m) => m.ApplicationForm),
+  { loading: Loader },
+);
+const AccountScreen = dynamic(
+  () => import("./member").then((m) => m.AccountScreen),
+  { loading: Loader },
+);
+const ProfileScreen = dynamic(
+  () => import("./member").then((m) => m.ProfileScreen),
+  { loading: Loader },
+);
+const MyActivity = dynamic(() => import("./member").then((m) => m.MyActivity), {
+  loading: Loader,
+});
+const NotificationsScreen = dynamic(
+  () => import("./member").then((m) => m.NotificationsScreen),
+  { loading: Loader },
+);
+const VideosScreen = dynamic(
+  () => import("./member").then((m) => m.VideosScreen),
+  { loading: Loader },
+);
+const VideoDetailScreen = dynamic(
+  () => import("./member").then((m) => m.VideoDetailScreen),
+  { loading: Loader },
+);
 const SupportHome = dynamic(
   () => import("./support").then((m) => m.SupportHome),
   { loading: Loader },
@@ -142,12 +159,13 @@ export default function ClubApp() {
       ? `/preview${path === "/" ? "" : path}${path.includes("?") ? "&" : "?"}role=${boot?.role || params.get("role") || "guest"}`
       : path;
   useEffect(() => {
-    if (preview) {
-      setBoot(previewData(params.get("role") || "guest"));
-      return;
-    }
     let live = true;
-    api("bootstrap")
+    const request = preview
+      ? import("@/lib/preview").then(({ previewData }) =>
+          previewData(params.get("role") || "guest"),
+        )
+      : api("bootstrap");
+    request
       .then((v) => {
         if (live) setBoot(v);
       })

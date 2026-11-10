@@ -47,9 +47,21 @@ import {
   paymentLabel,
   Pagination,
 } from "./core";
-import { VideoCard } from "./member";
-import { ScheduleTools } from "./schedule-tools";
-import { EventEditor, RuleForm } from "./admin-forms";
+import { VideoCard } from "./video-card";
+import dynamic from "next/dynamic";
+import { Loader } from "./core";
+const ScheduleTools = dynamic(
+  () => import("./schedule-tools").then((m) => m.ScheduleTools),
+  { loading: Loader },
+);
+const EventEditor = dynamic(
+  () => import("./admin-forms").then((m) => m.EventEditor),
+  { loading: Loader },
+);
+const RuleForm = dynamic(
+  () => import("./admin-forms").then((m) => m.RuleForm),
+  { loading: Loader },
+);
 
 export function HomeScreen() {
   const { boot, link } = useApp();

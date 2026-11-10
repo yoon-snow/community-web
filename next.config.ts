@@ -15,6 +15,10 @@ const config: NextConfig = {
         ],
       },
       {
+        source: "/fonts/s-core-dream/:font.woff",
+        headers: [{ key: "Cache-Control", value: "public, max-age=2592000" }],
+      },
+      {
         source: "/sw.js",
         headers: [
           {

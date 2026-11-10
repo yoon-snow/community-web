@@ -19,7 +19,6 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { type ClubRow } from "@/lib/domain";
-import { previewResource } from "@/lib/preview";
 
 export const Context = createContext<any>(null);
 
@@ -56,7 +55,12 @@ export function useResource(path: string | null) {
     setLoading(true);
     setError("");
     setData(null);
-    (boot.preview ? Promise.resolve(previewResource(path, boot)) : api(path))
+    (boot.preview
+      ? import("@/lib/preview").then(({ previewResource }) =>
+          previewResource(path, boot),
+        )
+      : api(path)
+    )
       .then((v) => {
         if (live) setData(v);
       })

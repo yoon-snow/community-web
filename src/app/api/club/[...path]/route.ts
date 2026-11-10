@@ -118,7 +118,16 @@ async function processRequest(request: Request, segments: string[]) {
     start.setDate(start.getDate() - 45);
     const end = new Date();
     end.setDate(end.getDate() + 120);
-    const results = await Promise.all([
+    const [
+      eventsResult,
+      noticesResult,
+      rulesResult,
+      questionsResult,
+      catalog,
+      avatar,
+      applicationResult,
+      intake,
+    ] = await Promise.all([
       db
         .from("events")
         .select("*")
@@ -149,38 +158,36 @@ async function processRequest(request: Request, segments: string[]) {
         .select("key,label,color")
         .order("sort_order")
         .order("label"),
+      who.member?.avatar_path
+        ? db.storage
+            .from("avatars")
+            .createSignedUrl(who.member.avatar_path, 300)
+        : null,
+      who.user && !who.member
+        ? db
+            .from("member_applications")
+            .select("id,status,submitted_at,review_note,reviewed_at")
+            .eq("user_id", who.user.id)
+            .maybeSingle()
+        : null,
+      who.member ? null : db.rpc("intake_rule_versions"),
     ]);
-    const [events, announcements, rules, questions] = results
-      .slice(0, 4)
-      .map(checked);
-    const catalog = results[4];
+    const [events, announcements, rules, questions] = [
+      eventsResult,
+      noticesResult,
+      rulesResult,
+      questionsResult,
+    ].map(checked);
+    const avatar_url = avatar?.data?.signedUrl ?? null;
+    const application = applicationResult ? checked(applicationResult) : null;
     const scheduleKinds =
       catalog.error && ["42P01", "PGRST205"].includes(catalog.error.code)
         ? undefined
         : checked(catalog);
-    let avatar_url = null;
-    if (who.member?.avatar_path) {
-      const signed = await db.storage
-        .from("avatars")
-        .createSignedUrl(who.member.avatar_path, 300);
-      avatar_url = signed.data?.signedUrl;
-    }
-    const application =
-      who.user && !who.member
-        ? checked(
-            await db
-              .from("member_applications")
-              .select("id,status,submitted_at,review_note,reviewed_at")
-              .eq("user_id", who.user.id)
-              .maybeSingle(),
-          )
-        : null;
     return json({
       configured: true,
       scheduleKinds,
-      intakeRuleVersions: who.member
-        ? undefined
-        : checked(await db.rpc("intake_rule_versions")),
+      intakeRuleVersions: intake ? checked(intake) : undefined,
       role: who.admin ? "admin" : who.member ? "member" : "guest",
       user: who.user ? { id: who.user.id, email: who.user.email } : null,
       member: who.member ? { ...who.member, avatar_url } : null,
@@ -247,7 +254,10 @@ async function processRequest(request: Request, segments: string[]) {
     return json(
       {
         ...confirmation,
-        support_proof: process.env.SUPABASE_SERVICE_ROLE_KEY && confirmation.receipt ? receiptProof(confirmation.receipt) : undefined,
+        support_proof:
+          process.env.SUPABASE_SERVICE_ROLE_KEY && confirmation.receipt
+            ? receiptProof(confirmation.receipt)
+            : undefined,
         bank: bankInfo(),
         depositor_name: input.name,
         message:
