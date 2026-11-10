@@ -1,3 +1,4 @@
+import { receiptProof } from "@/lib/support-receipt";
 import { exportData } from "@/lib/admin-export";
 import { z } from "zod";
 import { canReceiveNotification } from "@/lib/notification-policy";
@@ -246,6 +247,7 @@ async function processRequest(request: Request, segments: string[]) {
     return json(
       {
         ...confirmation,
+        support_proof: process.env.SUPABASE_SERVICE_ROLE_KEY && confirmation.receipt ? receiptProof(confirmation.receipt) : undefined,
         bank: bankInfo(),
         depositor_name: input.name,
         message:

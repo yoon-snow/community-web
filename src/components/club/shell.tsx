@@ -42,6 +42,20 @@ import {
   VideosScreen,
   VideoDetailScreen,
 } from "./member";
+const SupportHome = dynamic(
+  () => import("./support").then((m) => m.SupportHome),
+  { loading: Loader },
+);
+const SupportInbox = dynamic(() => import("./support").then((m) => m.Inbox), {
+  loading: Loader,
+});
+const SupportThread = dynamic(() => import("./support").then((m) => m.Thread), {
+  loading: Loader,
+});
+const FaqEditor = dynamic(() => import("./support").then((m) => m.FaqEditor), {
+  loading: Loader,
+});
+import { SupportLinks } from "./support-links";
 const AdminHome = dynamic(() => import("./admin").then((m) => m.AdminHome), {
   loading: Loader,
 });
@@ -403,7 +417,24 @@ export default function ClubApp() {
 }
 
 export function Screens({ screen }: { screen: string }) {
-  if (screen === "/") return <HomeScreen />;
+  if (screen === "/support") return <SupportHome />;
+  if (screen === "/support/mine") return <SupportInbox />;
+  if (screen === "/admin/support") return <SupportInbox admin />;
+  if (screen === "/admin/support/faqs") return <FaqEditor />;
+  if (/^\/(admin\/)?support\/[^/]+$/.test(screen))
+    return (
+      <SupportThread
+        id={screen.split("/").at(-1)!}
+        admin={screen.startsWith("/admin/")}
+      />
+    );
+  if (screen === "/")
+    return (
+      <>
+        <HomeScreen />
+        <SupportLinks />
+      </>
+    );
   if (screen === "/calendar" || screen === "/admin/calendar")
     return <CalendarScreen />;
   if (screen.startsWith("/admin/events/"))
@@ -422,12 +453,24 @@ export function Screens({ screen }: { screen: string }) {
         id={screen.split("/")[2]}
       />
     );
-  if (screen === "/videos") return <VideosScreen />;
+  if (screen === "/videos")
+    return (
+      <>
+        <VideosScreen />
+        <SupportLinks category="video" />
+      </>
+    );
   if (screen === "/account") return <AccountScreen />;
   if (screen === "/reset-password") return <ResetPasswordScreen />;
   if (screen === "/profile") return <ProfileScreen />;
   if (screen === "/attendance") return <MyActivity />;
-  if (screen === "/dues") return <MyActivity dues />;
+  if (screen === "/dues")
+    return (
+      <>
+        <MyActivity dues />
+        <SupportLinks category="dues" />
+      </>
+    );
   if (screen === "/uniform") return <MyActivity uniform />;
   if (screen === "/notifications") return <NotificationsScreen />;
   if (screen === "/admin") return <AdminHome />;

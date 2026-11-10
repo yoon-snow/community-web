@@ -7,6 +7,7 @@ import {
   Bell,
   CalendarDays,
   CheckCircle2,
+  ClipboardList as ClipboardListIcon,
   ChevronRight,
   Copy,
   Download,
@@ -56,6 +57,7 @@ import {
 } from "./core";
 import { VideoEditor } from "./admin-forms";
 import { AttendanceHistory } from "./attendance";
+import { SupportLinks } from "./support-links";
 import { AuthPanel } from "./auth";
 
 export function ApplicationForm({
@@ -232,6 +234,22 @@ export function ApplicationForm({
         membership ? "membership" : "guest-applications",
         data,
       );
+      if (!membership && result.support_proof) {
+        try {
+          sessionStorage.setItem(
+            "spot-support-application",
+            JSON.stringify({
+              id: result.receipt,
+              proof: result.support_proof,
+              name: latest.name,
+              phone: latest.phone,
+              event: latest.event_id,
+            }),
+          );
+        } catch {
+          /* Manual entry remains available. */
+        }
+      }
       setReceipt(result.receipt || result.id);
       setConfirmation(result);
     } catch (e) {
@@ -361,6 +379,7 @@ export function ApplicationForm({
             접수 번호를 저장해주세요. 확인이 필요하면 운영진에게 알려주세요.
           </p>
         </div>
+        {!membership && <SupportLinks category="payment" />}
         <Link href={link("/")} className="button primary full">
           홈으로 돌아가기
         </Link>
@@ -868,6 +887,12 @@ export function AccountScreen() {
           <Menu
             items={[
               { href: "/profile", label: "내 프로필", icon: UserRound },
+              { href: "/support", label: "문의하기", icon: Info },
+              {
+                href: "/support/mine",
+                label: "내 문의",
+                icon: ClipboardListIcon,
+              },
               { href: "/attendance", label: "내 출석", icon: CheckCircle2 },
               { href: "/dues", label: "내 회비", icon: Wallet },
               { href: "/videos", label: "영상·재생목록", icon: Play },

@@ -579,6 +579,8 @@ export function GuestCard({
 }
 
 export function AdminMembers() {
+  const memberId = useSearchParams().get("member");
+  const selected = useResource(memberId ? "admin/member/" + memberId : null);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(0);
@@ -647,6 +649,18 @@ export function AdminMembers() {
           }}
         />
       </label>
+      {memberId && (
+        <Resource resource={selected}>
+          {(m) => (
+            <button
+              className="button secondary full"
+              onClick={() => setEdit(m)}
+            >
+              {m.name} · 회원 상세 열기
+            </button>
+          )}
+        </Resource>
+      )}
       <Chips
         value={status}
         onChange={(v) => {
@@ -1053,6 +1067,11 @@ export function AdminMore() {
   return (
     <>
       <PageTitle eyebrow="OPERATIONS" title="더보기" />
+      <Menu
+        items={[
+          { href: "/admin/support", label: "문의 관리", icon: ClipboardList },
+        ]}
+      />
       <div className="card">
         <h2>화면 미리보기</h2>
         <div className="button-row">

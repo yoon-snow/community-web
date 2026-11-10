@@ -2434,7 +2434,16 @@ test("weekly schedule fills Korea dates once, preserves edits, and limits operat
   await assert.rejects(memberQuery(generate));
   await assert.rejects(as("anon", null, generate));
   const first = await adminQuery(generate);
-  assert.ok(first.rows[0].added >= 37);
+  assert.ok(first.rows[0].added > 0);
+  // Earlier fixtures may already occupy regular slots. Count covered dates, including those fixtures.
+  const covered = await adminQuery(`
+    select count(distinct local_day)::int as days from (
+      select (starts_at at time zone 'Asia/Seoul')::date local_day, kind from public.events
+    ) e where local_day between (now() at time zone 'Asia/Seoul')::date and (now() at time zone 'Asia/Seoul')::date+55
+    and ((extract(isodow from local_day) in (1,5) and kind='lesson')
+      or (extract(isodow from local_day) in (2,4,7) and kind='game'))
+  `);
+  assert.ok(covered.rows[0].days >= 39);
   const slots = (
     await adminQuery(
       "select id,kind,regular_date,location,guest_fee,guests_open,extract(isodow from regular_date)::int dow,to_char(starts_at at time zone 'Asia/Seoul','HH24:MI') start,to_char(ends_at at time zone 'Asia/Seoul','HH24:MI') finish from public.events where regular_date is not null",
@@ -2501,4 +2510,109 @@ test("rules contents are member-only while intake version identifiers remain ava
     .rows[0].days;
   assert.equal(days.length, 2);
   assert.ok(Array.isArray(days[0].events));
+});
+
+test("support tickets isolate owners, snapshot FAQs, target one admin and notify only the member on reply", async () => {
+  const ticket = "aaaaaaaa-bbbb-4aaa-8bbb-000000000015";
+  const faq = "00000000-0000-4000-8000-000000000013";
+  const notifyCount = async () =>
+    Number(
+      (
+        await db.query(
+          "select count(*) n from public.notifications where href like '%/support/%'",
+        )
+      ).rows[0].n,
+    );
+  await db.query(
+    "insert into public.inquiry_notification_recipients values($1)",
+    [aid],
+  );
+  const before = await notifyCount();
+  await as("service_role", null, "select public.support_view($1)", [faq]);
+  assert.equal(await notifyCount(), before);
+  assert.equal(
+    (
+      await as("anon", null, "select view_count from public.faqs where id=$1", [
+        faq,
+      ])
+    ).rows[0].view_count,
+    1,
+  );
+  const send = "select public.support_message($1,$2,$3,$4,$5)";
+  const details = {
+    category_id: "payment",
+    faq_id: faq,
+    name: "테스트",
+    phone: "01000000000",
+    member_id: mid,
+    title: "테스트 문의",
+  };
+  await assert.rejects(
+    memberQuery(send, [ticket, details, "admin", "위조", []]),
+  );
+  await as("service_role", null, send, [ticket, details, "member", "질문", []]);
+  assert.equal(
+    (
+      await memberQuery("select title from public.inquiries where id=$1", [
+        ticket,
+      ])
+    ).rows.length,
+    1,
+  );
+  assert.equal(
+    (
+      await as(
+        "authenticated",
+        other,
+        "select id from public.inquiry_messages where inquiry_id=$1",
+        [ticket],
+      )
+    ).rows.length,
+    0,
+  );
+  await assert.rejects(as("anon", null, "select id from public.inquiries"));
+  assert.equal(
+    (
+      await db.query("select user_id from public.notifications where href=$1", [
+        "/admin/support/" + ticket,
+      ])
+    ).rows[0].user_id,
+    admin,
+  );
+  await as("service_role", null, send, [
+    ticket,
+    null,
+    "admin",
+    "확인했어요",
+    ["one", "two", "three"],
+  ]);
+  await assert.rejects(
+    as("service_role", null, send, [ticket, null, "member", "네", ["four"]]),
+  );
+  assert.equal(
+    (
+      await memberQuery(
+        "select id from public.inquiry_messages where inquiry_id=$1",
+        [ticket],
+      )
+    ).rows.length,
+    2,
+  );
+  assert.equal(
+    (
+      await db.query("select user_id from public.notifications where href=$1", [
+        "/support/" + ticket,
+      ])
+    ).rows[0].user_id,
+    member,
+  );
+  const row = (
+    await db.query(
+      "select status,faq_question,last_reply_at from public.inquiries where id=$1",
+      [ticket],
+    )
+  ).rows[0];
+  assert.equal(row.status, "RESOLVED");
+  assert.ok(row.faq_question);
+  assert.ok(row.last_reply_at);
 });
