@@ -40,7 +40,9 @@ import {
   parseCsv,
 } from "./core";
 
+import { OpsSwitch, useOpsScope } from "./ops-scope";
 export function AnalyticsScreen() {
+  const member = useOpsScope() === "member";
   const [month, setMonth] = useState(seoulDate().slice(0, 7));
   const resource = useResource(`admin/analytics?month=${month}`);
   return (
@@ -50,6 +52,7 @@ export function AnalyticsScreen() {
         title="한눈에 보는 SpotLight"
         description="우리 팀이 함께 쌓아가는 기록"
       />
+      <OpsSwitch path="/admin/analytics" />
       <input
         className="month-input"
         aria-label="대시보드 월"
@@ -68,28 +71,34 @@ export function AnalyticsScreen() {
                 { label: "회원 평균 출석", value: d.average_attendance },
                 { label: "평균 참가", value: d.average_participants },
                 { label: "회비 납부율", value: d.payment_rate + "%" },
-              ]}
+              ].filter((_, i) => (member ? i >= 2 : i < 2))}
             />
-            <div className="card">
-              <SectionTitle title="게스트 실제 방문" />
-              <p className="micro">
-                선택 월 실제 출석 확인 기준 · 재방문은 해당 월 이전 방문 이력이
-                있는 게스트입니다.
-              </p>
-              <div className="count-row">
-                <span>
-                  신규 <b>{d.new_guests}</b>
-                </span>
-                <span>
-                  재방문 <b>{d.returning_guests}</b>
-                </span>
-                <span>
-                  재방문율 <b>{d.return_rate || 0}%</b>
-                </span>
-              </div>
-            </div>
-            <BarChart title="월별 게스트 신청" rows={d.monthly || []} />
-            <BarChart title="월별 신규 회원" rows={d.monthly_members || []} />
+            {!member && (
+              <>
+                <div className="card">
+                  <SectionTitle title="게스트 실제 방문" />
+                  <p className="micro">
+                    선택 월 실제 출석 확인 기준 · 재방문은 해당 월 이전 방문
+                    이력이 있는 게스트입니다.
+                  </p>
+                  <div className="count-row">
+                    <span>
+                      신규 <b>{d.new_guests}</b>
+                    </span>
+                    <span>
+                      재방문 <b>{d.returning_guests}</b>
+                    </span>
+                    <span>
+                      재방문율 <b>{d.return_rate || 0}%</b>
+                    </span>
+                  </div>
+                </div>
+                <BarChart title="월별 게스트 신청" rows={d.monthly || []} />
+              </>
+            )}
+            {member && (
+              <BarChart title="월별 신규 회원" rows={d.monthly_members || []} />
+            )}
             <BarChart title="월별 평균 참가자" rows={d.monthly_average || []} />
             <BarChart
               title="월별 실제 참가 연인원"
@@ -99,62 +108,76 @@ export function AnalyticsScreen() {
               title="회원 / 게스트 실제 참가 비율 (%)"
               rows={d.participant_ratio || []}
             />
-            <div className="card">
-              <h2>최근 장기 미참석 회원</h2>
-              <p className="micro">
-                현재 활성 회원 중 최근 90일간 실제 출석이 없고 가입 후 90일이
-                지난 회원입니다. 선택 월과 무관한 현재 기준입니다.
-              </p>
-              {(d.inactive_members || []).length ? (
-                d.inactive_members.map((m: ClubRow) => (
-                  <div className="detail-line" key={m.id}>
-                    <span>{m.name}</span>
-                    <span>
-                      {m.last_attended
-                        ? formatDate(m.last_attended)
-                        : "출석 기록 없음"}
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <p>해당 회원이 없습니다.</p>
-              )}
-            </div>
-            <BarChart title="게스트 포지션" rows={d.positions || []} />
-            <BarChart title="배구 경력" rows={d.experience || []} />
-            <BarChart title="유입 경로" rows={d.sources || []} />
-            <BarChart
-              title="요일별 신청"
-              rows={(d.weekdays || []).map((r: ClubRow) => ({
-                ...r,
-                label:
-                  ["", "월", "화", "수", "목", "금", "토", "일"][
-                    Number(r.label)
-                  ] + "요일",
-              }))}
-            />
-            <BarChart
-              title="회원별 실제 출석 · 선택 월"
-              rows={d.member_attendance || []}
-            />
+            {member && (
+              <div className="card">
+                <h2>최근 장기 미참석 회원</h2>
+                <p className="micro">
+                  현재 활성 회원 중 최근 90일간 실제 출석이 없고 가입 후 90일이
+                  지난 회원입니다. 선택 월과 무관한 현재 기준입니다.
+                </p>
+                {(d.inactive_members || []).length ? (
+                  d.inactive_members.map((m: ClubRow) => (
+                    <div className="detail-line" key={m.id}>
+                      <span>{m.name}</span>
+                      <span>
+                        {m.last_attended
+                          ? formatDate(m.last_attended)
+                          : "출석 기록 없음"}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p>해당 회원이 없습니다.</p>
+                )}
+              </div>
+            )}
+            {!member && (
+              <>
+                <BarChart title="게스트 포지션" rows={d.positions || []} />
+                <BarChart title="배구 경력" rows={d.experience || []} />
+                <BarChart title="유입 경로" rows={d.sources || []} />
+                <BarChart
+                  title="요일별 신청"
+                  rows={(d.weekdays || []).map((r: ClubRow) => ({
+                    ...r,
+                    label:
+                      ["", "월", "화", "수", "목", "금", "토", "일"][
+                        Number(r.label)
+                      ] + "요일",
+                  }))}
+                />
+              </>
+            )}
+            {member && (
+              <BarChart
+                title="회원별 실제 출석 · 선택 월"
+                rows={d.member_attendance || []}
+              />
+            )}
             <div className="card">
               <h2>운영 현황</h2>
               <p className="micro">
                 참가 통계는 종료된 정상 운동의 실제 출석 기준입니다. 회비
                 납부율은 면제를 제외한 등록 회비 중 납부완료 비율입니다.
               </p>
-              <div className="detail-line">
-                <span>신규 가입 회원</span>
-                <strong>{d.new_members}명</strong>
-              </div>
-              <div className="detail-line">
-                <span>입금확인 전 게스트 · 전체</span>
-                <strong>{d.pending_guests}명</strong>
-              </div>
-              <div className="detail-line">
-                <span>선택 월 회비 미납</span>
-                <strong>{d.unpaid_members}명</strong>
-              </div>
+              {member && (
+                <div className="detail-line">
+                  <span>신규 가입 회원</span>
+                  <strong>{d.new_members}명</strong>
+                </div>
+              )}
+              {!member && (
+                <div className="detail-line">
+                  <span>입금확인 전 게스트 · 전체</span>
+                  <strong>{d.pending_guests}명</strong>
+                </div>
+              )}
+              {member && (
+                <div className="detail-line">
+                  <span>선택 월 회비 미납</span>
+                  <strong>{d.unpaid_members}명</strong>
+                </div>
+              )}
             </div>
           </>
         )}

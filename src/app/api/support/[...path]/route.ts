@@ -139,13 +139,11 @@ async function handle(req: Request, ctx: Ctx) {
       };
     const faq = faqSchema.parse(await req.json());
     data(
-      await db
-        .from("faqs")
-        .upsert({
-          ...faq,
-          updated_by: who.user!.id,
-          updated_at: new Date().toISOString(),
-        }),
+      await db.from("faqs").upsert({
+        ...faq,
+        updated_by: who.user!.id,
+        updated_at: new Date().toISOString(),
+      }),
     );
     return { ok: true };
   }
@@ -171,20 +169,19 @@ async function handle(req: Request, ctx: Ctx) {
     if (role === "member") q = q.not("member_id", "is", null);
     if (cat) q = q.eq("category_id", cat);
     const rows = await q.range(page * 30, page * 30 + 29);
+    const countTickets = () => {
+      let query = db
+        .from("inquiries")
+        .select("id", { count: "exact", head: true });
+      if (role === "guest") query = query.is("member_id", null);
+      if (role === "member") query = query.not("member_id", "is", null);
+      return cat ? query.eq("category_id", cat) : query;
+    };
     const counts = admin
       ? await Promise.all([
-          db
-            .from("inquiries")
-            .select("id", { count: "exact", head: true })
-            .eq("status", "NEW"),
-          db
-            .from("inquiries")
-            .select("id", { count: "exact", head: true })
-            .eq("status", "IN_PROGRESS"),
-          db
-            .from("inquiries")
-            .select("id", { count: "exact", head: true })
-            .gte("created_at", seoulDate() + "T00:00:00+09:00"),
+          countTickets().eq("status", "NEW"),
+          countTickets().eq("status", "IN_PROGRESS"),
+          countTickets().gte("created_at", seoulDate() + "T00:00:00+09:00"),
         ])
       : [];
     return {

@@ -470,7 +470,8 @@ export function Screens({ screen }: { screen: string }) {
   if (screen === "/apply") return <ApplicationForm />;
   if (screen === "/join") return <ApplicationForm membership />;
   if (screen === "/notices") return <NoticesScreen />;
-  if (screen === "/rules") return <RulesScreen />;
+  if (screen === "/admin/guest-rules") return <RulesScreen guestRules />;
+  if (screen === "/admin/rules" || screen === "/rules") return <RulesScreen />;
   if (/^\/(videos|playlists)\/[^/]+$/.test(screen))
     return (
       <VideoDetailScreen

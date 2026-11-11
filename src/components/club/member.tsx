@@ -899,7 +899,6 @@ export function AccountScreen() {
           </Link>
           <Menu
             items={[
-              { href: "/profile", label: "내 프로필", icon: UserRound },
               { href: "/support", label: "문의하기", icon: Info },
               {
                 href: "/support/mine",

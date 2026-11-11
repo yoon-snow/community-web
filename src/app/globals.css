@@ -2488,3 +2488,24 @@ input::placeholder, textarea::placeholder { color: var(--secondary-ink); opacity
 .guest-etiquette li + li { margin-top: .5em; }
 .form-notices > summary { font-weight: 700; }
 [data-theme="dark"] .badge.gold { color: var(--accent-ink); background: #423719; }
+
+.uniform-card > strong { color: var(--text); }
+.button-row { flex-wrap: wrap; }
+.button-row > .button { flex: 1 1 auto; white-space: nowrap; }
+.participation .button-row > .button { padding-inline: 10px; gap: 4px; }
+.list-card:has(> .button-row) { flex-wrap: wrap; }
+.list-card > .button-row { flex: 0 1 auto; margin-block: 0; }
+@media (max-width: 430px) {
+  .list-card > .button-row { flex-basis: 100%; }
+}
+.question-item { position: relative; }
+.question-item strong { word-break: keep-all; overflow-wrap: anywhere; }
+.question-item > button { flex: none; }
+.question-item > button::after { content: ""; position: absolute; inset: 0; border-radius: 13px; }
+[data-theme="dark"] .chips button[aria-pressed="true"] { background: #354f75; color: #fff; border-color: #819bbf; }
+[data-theme="dark"] .form-error, [data-theme="dark"] .text-button.danger-text { color: #ffb4b4; }
+.notice-body { display: grid; justify-items: start; gap: 14px; padding-block: 8px; }
+.notice-body p { margin: 0; }
+button.emergency { width: 100%; text-align: left; }
+.ops-switch { display:flex; gap:8px; margin:16px 0; }
+.ops-switch a { flex:1; }

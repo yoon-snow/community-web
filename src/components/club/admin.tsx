@@ -64,8 +64,71 @@ const NoticeEditor = dynamic(
   { loading: Loader },
 );
 
+import { OpsSwitch, useOpsScope } from "./ops-scope";
 import { DailyGuests } from "./daily-guests";
+function ManagementLinks({ member }: { member: boolean }) {
+  const scope = member ? "member" : "guest";
+  return (
+    <Menu
+      items={[
+        ...(member
+          ? [
+              {
+                href: "/admin/members",
+                label: "회원 · 가입 신청",
+                icon: Users,
+              },
+              { href: "/admin/rules", label: "회원 회칙", icon: BookOpen },
+              {
+                href: "/admin/calendar",
+                label: "운동 일정",
+                icon: CalendarDays,
+              },
+              {
+                href: "/admin/attendance",
+                label: "출석 관리",
+                icon: CheckCircle2,
+              },
+              { href: "/admin/dues", label: "회비 관리", icon: Wallet },
+            ]
+          : [
+              {
+                href: "/admin/guests",
+                label: "게스트 신청 · 입금 확인",
+                icon: Users,
+              },
+              {
+                href: "/admin/guest-rules",
+                label: "게스트 규정",
+                icon: BookOpen,
+              },
+            ]),
+        {
+          href: "/admin/notices?scope=" + scope,
+          label: member ? "회원 공지 관리" : "게스트 공개 공지 관리",
+          icon: ClipboardList,
+        },
+        {
+          href: "/admin/support?scope=" + scope,
+          label: member ? "회원 문의 관리" : "게스트 문의 관리",
+          icon: ClipboardList,
+        },
+        {
+          href: "/admin/support/faqs?scope=" + scope,
+          label: member ? "회원 FAQ 관리" : "게스트 FAQ 관리",
+          icon: BookOpen,
+        },
+        {
+          href: "/admin/analytics?scope=" + scope,
+          label: member ? "회원 통계" : "게스트 통계",
+          icon: Activity,
+        },
+      ]}
+    />
+  );
+}
 export function AdminHome() {
+  const member = useOpsScope() === "member";
   const { boot, link } = useApp();
   const [selectedEvent, setSelectedEvent] = useState("");
   const dashboard = useResource(
@@ -79,7 +142,8 @@ export function AdminHome() {
         title="오늘도, 함께 빛나게"
         description={`${boot.member?.name || "운영진"}님, 오늘의 운영 현황이에요.`}
       />
-      <DailyGuests />
+      <OpsSwitch path="/admin" />
+      {!member && <DailyGuests />}
       <Resource resource={dashboard}>
         {(d) => {
           const event = d.event;
@@ -130,22 +194,45 @@ export function AdminHome() {
                   <EventCard event={event} featured />
                   <div aria-label="관리자 참가 현황">
                     <Stats
-                      items={[
-                        { label: "회원 참석 예정", value: d.counts.members },
-                        {
-                          label: "게스트 전체 신청",
-                          value: d.guest_summary.applications,
-                        },
-                        {
-                          label: "게스트 입금완료",
-                          value: d.guest_summary.paid,
-                        },
-                        {
-                          label: "게스트 입금확인 전",
-                          value: d.guest_summary.pending,
-                        },
-                        { label: "전체 예상 참가 인원", value: d.counts.total },
-                      ]}
+                      items={
+                        member
+                          ? [
+                              {
+                                label: "회원 참석 예정",
+                                value: d.counts.members,
+                              },
+                              {
+                                label: "회원 참석 미응답",
+                                value: d.tasks.unanswered,
+                              },
+                              {
+                                label: "전체 예상 참가 인원",
+                                value: d.counts.total,
+                              },
+                            ]
+                          : [
+                              {
+                                label: "회원 참석 예정",
+                                value: d.counts.members,
+                              },
+                              {
+                                label: "게스트 전체 신청",
+                                value: d.guest_summary.applications,
+                              },
+                              {
+                                label: "게스트 입금완료",
+                                value: d.guest_summary.paid,
+                              },
+                              {
+                                label: "게스트 입금확인 전",
+                                value: d.guest_summary.pending,
+                              },
+                              {
+                                label: "전체 예상 참가 인원",
+                                value: d.counts.total,
+                              },
+                            ]
+                      }
                     />
                   </div>
                   <p className="micro">
@@ -189,32 +276,46 @@ export function AdminHome() {
                     unit: "명",
                     icon: CalendarDays,
                   },
-                ].map((item, index) => (
-                  <Link href={link(item.href)} key={item.label}>
-                    <span className={`task-icon task-${index}`}>
-                      <item.icon size={18} />
-                    </span>
-                    <span>{item.label}</span>
-                    <Badge tone={item.value ? "gold" : "neutral"}>
-                      {item.value}
-                      {item.unit}
-                    </Badge>
-                    <ChevronRight size={17} />
-                  </Link>
-                ))}
+                ]
+                  .filter((item) =>
+                    member
+                      ? !item.href.startsWith("/admin/guests")
+                      : item.href.startsWith("/admin/guests"),
+                  )
+                  .map((item, index) => (
+                    <Link href={link(item.href)} key={item.label}>
+                      <span className={`task-icon task-${index}`}>
+                        <item.icon size={18} />
+                      </span>
+                      <span>{item.label}</span>
+                      <Badge tone={item.value ? "gold" : "neutral"}>
+                        {item.value}
+                        {item.unit}
+                      </Badge>
+                      <ChevronRight size={17} />
+                    </Link>
+                  ))}
               </div>
-              <SectionTitle title="최근 게스트 신청 5건" href="/admin/guests" />
-              {d.recent_guests.length ? (
-                d.recent_guests
-                  .slice(0, 5)
-                  .map((g: ClubRow) => <GuestCard key={g.id} guest={g} />)
-              ) : (
-                <Empty icon={Users} title="새 게스트 신청이 없어요" />
+              {!member && (
+                <>
+                  <SectionTitle
+                    title="최근 게스트 신청 5건"
+                    href="/admin/guests"
+                  />
+                  {d.recent_guests.length ? (
+                    d.recent_guests
+                      .slice(0, 5)
+                      .map((g: ClubRow) => <GuestCard key={g.id} guest={g} />)
+                  ) : (
+                    <Empty icon={Users} title="새 게스트 신청이 없어요" />
+                  )}
+                </>
               )}
             </>
           );
         }}
       </Resource>
+      <ManagementLinks member={member} />
     </>
   );
 }
@@ -1072,14 +1173,12 @@ export function MemberEditor({
 }
 
 export function AdminMore() {
+  const member = useOpsScope() === "member";
   return (
     <>
       <PageTitle eyebrow="OPERATIONS" title="더보기" />
-      <Menu
-        items={[
-          { href: "/admin/support", label: "문의 관리", icon: ClipboardList },
-        ]}
-      />
+      <OpsSwitch path="/admin/more" />
+      <ManagementLinks member={member} />
       <div className="card">
         <h2>화면 미리보기</h2>
         <div className="button-row">
@@ -1094,28 +1193,28 @@ export function AdminMore() {
       </div>
       <Menu
         items={[
-          { href: "/admin/attendance", label: "출석 관리", icon: CheckCircle2 },
-          { href: "/admin/dues", label: "회비 관리", icon: Wallet },
-          {
-            href: "/admin/notices",
-            label: "공지 · 긴급공지",
-            icon: ClipboardList,
-          },
-          { href: "/admin/videos", label: "영상 관리", icon: Play },
+          ...(member
+            ? [
+                { href: "/admin/videos", label: "영상 관리", icon: Play },
+                { href: "/admin/uniforms", label: "유니폼 관리", icon: Shirt },
+              ]
+            : []),
           {
             href: "/admin/roster",
             label: "당일 참가자 명단 · 공유",
             icon: Share2,
           },
-          { href: "/admin/analytics", label: "운영 대시보드", icon: Activity },
+          {
+            href: "/admin/notices",
+            label: "전체 공지 · 운영진 공지",
+            icon: ClipboardList,
+          },
           { href: "/admin/import", label: "기존 데이터 Import", icon: FileUp },
           {
             href: "/admin/export",
             label: "Excel · CSV Export",
             icon: Download,
           },
-          { href: "/rules", label: "회칙 · 버전 관리", icon: BookOpen },
-          { href: "/admin/uniforms", label: "유니폼 관리", icon: Shirt },
           {
             href: "/admin/settings",
             label: "신청 질문 · 운영 설정",
@@ -1584,12 +1683,21 @@ export function MemberPicker({
 }
 
 export function AdminNotices() {
+  const scope = useSearchParams().get("scope");
+  const audience =
+    scope === "guest" ? "public" : scope === "member" ? "member" : "";
   const resource = useResource("admin/notices");
   const [edit, setEdit] = useState<ClubRow | boolean>(false);
   return (
     <>
       <PageTitle
-        title="공지 · 긴급공지"
+        title={
+          audience === "public"
+            ? "게스트 공개 공지"
+            : audience === "member"
+              ? "회원 공지"
+              : "공지 · 긴급공지"
+        }
         action={
           <button
             className="icon-button bordered"
@@ -1601,8 +1709,11 @@ export function AdminNotices() {
         }
       />
       <Resource resource={resource}>
-        {(rows) =>
-          rows.length ? (
+        {(all) => {
+          const rows = audience
+            ? all.filter((n: ClubRow) => n.audience === audience)
+            : all;
+          return rows.length ? (
             rows.map((n: ClubRow) => (
               <div key={n.id}>
                 <NoticeCard notice={n} />
@@ -1613,11 +1724,12 @@ export function AdminNotices() {
             ))
           ) : (
             <Empty icon={ClipboardList} title="첫 공지를 등록해주세요" />
-          )
-        }
+          );
+        }}
       </Resource>
       {edit && (
         <NoticeEditor
+          defaultAudience={audience || "public"}
           notice={typeof edit === "object" ? edit : undefined}
           close={() => setEdit(false)}
         />
@@ -1741,22 +1853,26 @@ export function SettingsScreen() {
         {(rows) =>
           rows.length ? (
             rows.map((q: ClubRow) => (
-              <button
-                className="list-card full"
-                key={q.id}
-                onClick={() => setEdit(q)}
-              >
+              <div className="list-card question-item" key={q.id}>
                 <div>
-                  <strong>{q.label}</strong>
-                  <small>
+                  <strong id={`question-label-${q.id}`}>{q.label}</strong>
+                  <small id={`question-meta-${q.id}`}>
                     {q.form === "guest" ? "게스트" : "회원"} ·{" "}
                     {q.is_system ? "기본" : "추가"} · v{q.version || 1} ·{" "}
                     {q.required ? "필수" : "선택"} ·{" "}
                     {q.active ? "사용 중" : "숨김"}
                   </small>
                 </div>
-                <ChevronRight size={17} />
-              </button>
+                <button
+                  type="button"
+                  className="button compact secondary"
+                  id={`question-edit-${q.id}`}
+                  aria-labelledby={`question-label-${q.id} question-meta-${q.id} question-edit-${q.id}`}
+                  onClick={() => setEdit(q)}
+                >
+                  수정
+                </button>
+              </div>
             ))
           ) : (
             <Empty icon={ClipboardList} title="추가 질문이 없어요">

@@ -14,6 +14,12 @@ import demo from "@/lib/support-demo.json";
 import { formatDate, formatTime } from "@/lib/domain";
 type FAQ = (typeof demo.faqs)[number];
 type Category = (typeof demo.categories)[number];
+function forAudience(id: string, audience: string) {
+  if (audience === "member") return !["guest", "payment", "join"].includes(id);
+  if (audience === "guest")
+    return !["dues", "attendance", "video", "uniform"].includes(id);
+  return true;
+}
 type Ticket = {
   id: string;
   title: string;
@@ -58,6 +64,15 @@ function demoResult(path: string) {
     last_reply_at: null,
   };
   if (path === "catalog" || path === "admin/faqs") return demo;
+  if (
+    path.startsWith("admin/inbox") &&
+    new URLSearchParams(path.split("?")[1]).get("role") === "guest"
+  )
+    return {
+      rows: [{ ...ticket, member_id: null, name: "예시 게스트" }],
+      counts: [1, 0, 1],
+      total: 1,
+    };
   if (path.startsWith("mine") || path.startsWith("admin/inbox"))
     return { rows: [ticket], counts: [1, 0, 1], total: 1 };
   return {
@@ -142,14 +157,15 @@ export function SupportHome() {
     [compose, setCompose] = useState(false),
     [resolved, setResolved] = useState(false);
   const focused = params.get("faq");
+  const audience = boot.member ? "member" : "guest";
   useEffect(() => {
     const f = data?.faqs.find((row: FAQ) => row.id === focused);
-    if (f) {
+    if (f && forAudience(f.category_id, audience)) {
       choose(f);
       setCategory(f.category_id);
       if (!boot.preview) void request("view", { id: f.id }).catch(() => {});
     }
-  }, [data, focused, boot.preview]);
+  }, [data, focused, boot.preview, audience]);
   if (!data)
     return error ? (
       <>
@@ -159,8 +175,12 @@ export function SupportHome() {
     ) : (
       <Loader />
     );
-  const cats: Category[] = data.categories,
-    faqs: FAQ[] = data.faqs;
+  const cats: Category[] = data.categories.filter((c: Category) =>
+      forAudience(c.id, audience),
+    ),
+    faqs: FAQ[] = data.faqs.filter((f: FAQ) =>
+      forAudience(f.category_id, audience),
+    );
   const name = (id: string) => cats.find((c) => c.id === id)?.name || id;
   const list = faqs
     .filter(
@@ -174,6 +194,18 @@ export function SupportHome() {
     .sort(
       (a, b) =>
         Number(b.is_featured) - Number(a.is_featured) ||
+        (audience === "member"
+          ? Number(
+              ["attendance", "dues", "uniform", "video"].includes(
+                b.category_id,
+              ),
+            ) -
+            Number(
+              ["attendance", "dues", "uniform", "video"].includes(
+                a.category_id,
+              ),
+            )
+          : 0) ||
         b.view_count - a.view_count ||
         a.sort_order - b.sort_order,
     );
@@ -226,7 +258,7 @@ export function SupportHome() {
               setResolved(false);
             }}
           >
-            {c.icon} {c.name}
+            {c.name}
           </button>
         ))}
       </div>
@@ -473,8 +505,11 @@ function Compose({
 }
 export function Inbox({ admin = false }: { admin?: boolean }) {
   const { link } = useApp();
+  const scope = useSearchParams().get("scope") || "";
   const [status, setStatus] = useState(""),
-    [role, setRole] = useState(""),
+    [role, setRole] = useState(
+      ["guest", "member"].includes(scope) ? scope : "",
+    ),
     [category, setCategory] = useState(""),
     [page, setPage] = useState(0);
   const cat = useSupport("catalog"),
@@ -489,7 +524,10 @@ export function Inbox({ admin = false }: { admin?: boolean }) {
       <h1>{admin ? "문의 관리" : "내 문의"}</h1>
       {admin && (
         <>
-          <Link href={link("/admin/support/faqs")} className="button secondary">
+          <Link
+            href={link("/admin/support/faqs" + (role ? "?scope=" + role : ""))}
+            className="button secondary"
+          >
             FAQ 관리
           </Link>
           <section className="support-stats">
@@ -781,6 +819,7 @@ export function Thread({ id, admin }: { id: string; admin: boolean }) {
   );
 }
 export function FaqEditor() {
+  const scope = useSearchParams().get("scope") || "";
   const { boot } = useApp(),
     { data, error, reload } = useSupport("admin/faqs");
   const [edit, set] = useState<Partial<FAQ> | null>(null),
@@ -832,11 +871,13 @@ export function FaqEditor() {
           <label>
             카테고리
             <select name="category" defaultValue={edit.category_id}>
-              {data.categories.map((c: Category) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
+              {data.categories
+                .filter((c: Category) => forAudience(c.id, scope))
+                .map((c: Category) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
             </select>
           </label>
           <label>
@@ -907,19 +948,21 @@ export function FaqEditor() {
             FAQ 추가
           </button>
           <section className="card">
-            {data.faqs.map((f: FAQ) => (
-              <button
-                className="support-question"
-                key={f.id}
-                onClick={() => set(f)}
-              >
-                {f.question}
-                <small>
-                  {f.is_featured ? "고정 · " : ""}
-                  {f.is_active ? "공개" : "비공개"} · 조회 {f.view_count}
-                </small>
-              </button>
-            ))}
+            {data.faqs
+              .filter((f: FAQ) => forAudience(f.category_id, scope))
+              .map((f: FAQ) => (
+                <button
+                  className="support-question"
+                  key={f.id}
+                  onClick={() => set(f)}
+                >
+                  {f.question}
+                  <small>
+                    {f.is_featured ? "고정 · " : ""}
+                    {f.is_active ? "공개" : "비공개"} · 조회 {f.view_count}
+                  </small>
+                </button>
+              ))}
           </section>
         </>
       )}
@@ -930,7 +973,10 @@ export function FaqEditor() {
 export function ContextFaqs({ category }: { category: string }) {
   const { link } = useApp(),
     { data } = useSupport("catalog");
-  const list: FAQ[] = data?.faqs || [];
+  const { boot } = useApp();
+  const list: FAQ[] = (data?.faqs || []).filter((f: FAQ) =>
+    forAudience(f.category_id, boot.member ? "member" : "guest"),
+  );
   const relevant = list.filter((f) => f.category_id === category);
   if (category === "payment") {
     const cancel = list.find(

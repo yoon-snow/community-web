@@ -246,9 +246,11 @@ export function DeleteButton({
 
 export function NoticeEditor({
   notice: n,
+  defaultAudience = "public",
   close,
 }: {
   notice?: ClubRow;
+  defaultAudience?: string;
   close: () => void;
 }) {
   const { mutate } = useApp();
@@ -301,7 +303,7 @@ export function NoticeEditor({
         <Field
           label="공개 대상"
           name="audience"
-          value={n?.audience || "public"}
+          value={n?.audience || defaultAudience}
         >
           {[
             { value: "public", label: "전체 공개" },
@@ -502,11 +504,26 @@ export function VideoEditor({
   );
 }
 
-export function RuleForm({ done }: { done: () => void }) {
+export function RuleForm({
+  done,
+  guest,
+  article,
+}: {
+  done: () => void;
+  guest: boolean;
+  article?: ClubRow;
+}) {
   const { mutate } = useApp();
   return (
     <SaveForm
       onSubmit={async (f) => {
+        const category = String(f.get("category") || "").trim();
+        if (!article && /^(guest|게스트)/i.test(category) !== guest)
+          throw new Error(
+            guest
+              ? "게스트 분류명은 게스트로 시작해주세요."
+              : "게스트 규정은 게스트 관리에서 등록해주세요.",
+          );
         await mutate("admin/rules", Object.fromEntries(f));
         done();
       }}
@@ -515,12 +532,15 @@ export function RuleForm({ done }: { done: () => void }) {
         label="카테고리 키 (같은 키는 버전 추가)"
         name="category"
         required
-        placeholder="guest / member / operation"
+        value={article?.category}
+        readOnly={Boolean(article)}
+        placeholder={guest ? "게스트 참가" : "회원 / 회비 / 훈련 및 게임"}
       />
-      <Field label="회칙 제목" name="title" required />
+      <Field label="회칙 제목" name="title" value={article?.title} required />
       <Field
         label="회칙 내용"
         name="content"
+        value={article?.version.content}
         type="textarea"
         required
         rows={10}

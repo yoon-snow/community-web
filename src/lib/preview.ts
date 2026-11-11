@@ -147,6 +147,24 @@ export function previewData(role = "guest") {
         deleted_at: null,
       })),
     rules: [
+      ...["회원", "회비", "훈련 및 게임"].map((title, i) => ({
+        id: "member-rule-" + i,
+        category: title,
+        title,
+        current_version: 1,
+        rule_versions: [
+          {
+            version: 1,
+            published: true,
+            content:
+              [
+                "회원은 운동 전 참석 여부를 등록하고 변경 시 응답을 수정합니다.",
+                "내 정보에서 본인의 월별 회비 상태를 확인할 수 있습니다.",
+                "운동 시간과 장소, 긴급 변경 안내를 확인한 뒤 참여해주세요.",
+              ][i] + " (미리보기 예시)",
+          },
+        ],
+      })),
       {
         id: "rule-1",
         category: "guest",

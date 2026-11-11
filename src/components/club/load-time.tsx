@@ -11,7 +11,10 @@ export function LoadTime({ screen }: { screen: string }) {
     const selectors: Record<string, string[]> = {
       "/": [".event-card.featured, .next-event-empty"],
       "/calendar": [".calendar-grid button"],
-      "/admin": [".task-list", ".daily-guests .card"],
+      "/admin":
+        new URLSearchParams(location.search).get("scope") === "member"
+          ? [".task-list"]
+          : [".task-list", ".daily-guests .card"],
     };
     const targets = selectors[screen];
     const main = document.getElementById("main-content");

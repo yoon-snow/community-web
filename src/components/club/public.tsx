@@ -190,23 +190,27 @@ export function HomeScreen() {
 }
 
 export function Emergency() {
-  const { boot, link } = useApp();
+  const [open, setOpen] = useState(false);
+  const { boot } = useApp();
   const urgent = sortAnnouncements(boot.announcements as ClubRow[]).filter(
     (n) => n.kind === "emergency",
   );
   const n = urgent[0];
   return n ? (
-    <Link href={link("/notices")} className="emergency">
-      <AlertCircle size={20} />
-      <div>
-        <small>
-          긴급공지{urgent.length > 1 ? ` · ${urgent.length}건` : ""}
-        </small>
-        <strong>{n.title}</strong>
-        <p className="urgent-excerpt">{n.content}</p>
-      </div>
-      <ChevronRight size={18} />
-    </Link>
+    <>
+      <button type="button" className="emergency" onClick={() => setOpen(true)}>
+        <AlertCircle size={20} />
+        <div>
+          <small>
+            긴급공지{urgent.length > 1 ? ` · ${urgent.length}건` : ""}
+          </small>
+          <strong>{n.title}</strong>
+          <p className="urgent-excerpt">{n.content}</p>
+        </div>
+        <ChevronRight size={18} />
+      </button>
+      {open && <NoticeDialog notice={n} close={() => setOpen(false)} />}
+    </>
   ) : null;
 }
 
@@ -708,27 +712,37 @@ export function NoticeCard({ notice }: { notice: ClubRow }) {
         </span>
         <ChevronRight size={18} />
       </button>
-      {open && (
-        <Modal centered title={notice.title} close={() => setOpen(false)}>
-          <div className="prose">
-            <p className="micro">
-              공지 버전 v{notice.version || 1} ·{" "}
-              {notice.updated_at
-                ? formatDate(notice.updated_at)
-                : formatDate(notice.created_at)}
-            </p>
-            <Badge>
-              {notice.audience === "public"
-                ? "전체 공개"
-                : notice.audience === "admin"
-                  ? "운영진"
-                  : "회원"}
-            </Badge>
-            <p>{notice.content}</p>
-          </div>
-        </Modal>
-      )}
+      {open && <NoticeDialog notice={notice} close={() => setOpen(false)} />}
     </>
+  );
+}
+
+function NoticeDialog({
+  notice,
+  close,
+}: {
+  notice: ClubRow;
+  close: () => void;
+}) {
+  return (
+    <Modal centered title={notice.title} close={close}>
+      <div className="prose notice-body">
+        <p className="micro">
+          공지 버전 v{notice.version || 1} ·{" "}
+          {notice.updated_at
+            ? formatDate(notice.updated_at)
+            : formatDate(notice.created_at)}
+        </p>
+        <Badge>
+          {notice.audience === "public"
+            ? "전체 공개"
+            : notice.audience === "admin"
+              ? "운영진"
+              : "회원"}
+        </Badge>
+        <p>{notice.content}</p>
+      </div>
+    </Modal>
   );
 }
 
@@ -835,9 +849,11 @@ export function GuestGuide() {
   );
 }
 
-export function RulesScreen() {
+export function RulesScreen({
+  guestRules = false,
+}: { guestRules?: boolean } = {}) {
   const { boot } = useApp();
-  const [edit, setEdit] = useState(false);
+  const [edit, setEdit] = useState<ClubRow | true | null>(null);
   if (!boot.member)
     return (
       <Empty icon={BookOpen} title="회원 전용 회칙입니다">
@@ -845,6 +861,9 @@ export function RulesScreen() {
       </Empty>
     );
   const articles: ClubRow[] = (boot.rules as ClubRow[]).flatMap((r) => {
+    const guest =
+      /^(guest|게스트)/i.test(r.category) || /^게스트/.test(r.title);
+    if (guest !== guestRules) return [];
     const version = r.rule_versions?.find(
       (v: ClubRow) => v.version === r.current_version && v.published,
     );
@@ -854,7 +873,7 @@ export function RulesScreen() {
     <>
       <PageTitle
         eyebrow="CLUB HANDBOOK"
-        title="SpotLight 회칙"
+        title={guestRules ? "게스트 규정 관리" : "SpotLight 회칙"}
         action={
           boot.role === "admin" ? (
             <button className="button secondary" onClick={() => setEdit(true)}>
@@ -889,6 +908,11 @@ export function RulesScreen() {
               </header>
               <h2>{r.title}</h2>
               <div className="handbook-content">{r.version.content}</div>
+              {boot.role === "admin" && (
+                <button className="text-button" onClick={() => setEdit(r)}>
+                  이 조항 수정
+                </button>
+              )}
             </article>
           ))}
         </>
@@ -896,8 +920,12 @@ export function RulesScreen() {
         <Empty icon={BookOpen} title="게시된 회칙이 없습니다" />
       )}
       {edit && (
-        <Modal title="회칙 개정" close={() => setEdit(false)}>
-          <RuleForm done={() => setEdit(false)} />
+        <Modal title="회칙 개정" close={() => setEdit(null)}>
+          <RuleForm
+            guest={guestRules}
+            article={edit === true ? undefined : edit}
+            done={() => setEdit(null)}
+          />
         </Modal>
       )}
     </>
