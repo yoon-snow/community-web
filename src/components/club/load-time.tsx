@@ -9,7 +9,7 @@ export function LoadTime({ screen }: { screen: string }) {
     const navigation = performance.getEntriesByType("navigation")[0];
     if (!navigation || new URL(navigation.name).href !== location.href) return;
     const selectors: Record<string, string[]> = {
-      "/": [".event-card.featured, .greeting + .card"],
+      "/": [".event-card.featured, .next-event-empty"],
       "/calendar": [".calendar-grid button"],
       "/admin": [".task-list", ".daily-guests .card"],
     };

@@ -192,6 +192,7 @@ export function SectionTitle({
 }
 
 export function Modal({
+  centered = false,
   title,
   children,
   close,
@@ -199,6 +200,7 @@ export function Modal({
   title: string;
   children: ReactNode;
   close: () => void;
+  centered?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -215,7 +217,7 @@ export function Modal({
     <dialog
       ref={ref}
       onCancel={close}
-      className="sheet"
+      className={centered ? "sheet notice-dialog" : "sheet"}
       onClick={(e) => {
         if (e.target === ref.current) close();
       }}

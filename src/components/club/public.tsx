@@ -48,6 +48,8 @@ import {
   paymentLabel,
   Pagination,
 } from "./core";
+import { SupportLinks } from "./support-links";
+import { GuestNotices } from "./guest-notices";
 import { VideoCard } from "./video-card";
 import dynamic from "next/dynamic";
 import { Loader } from "./core";
@@ -80,18 +82,7 @@ export function HomeScreen() {
         <h1 className="member-hello">
           {boot.member.name}님, 다음 운동을 확인하세요.
         </h1>
-      ) : (
-        <div className="greeting">
-          <p>PLAY TOGETHER, SHINE TOGETHER</p>
-          <h1>
-            우리의 배구가
-            <br />더 빛나는 곳<span className="gold">.</span>
-          </h1>
-          <span className="greeting-caption">
-            함께 뛰고, 함께 성장하는 SpotLight
-          </span>
-        </div>
-      )}
+      ) : null}
       {next ? (
         <>
           <SectionTitle title="다음 운동" href="/calendar" label="일정 보기" />
@@ -99,7 +90,7 @@ export function HomeScreen() {
           {boot.member && <EventActions event={next} />}
         </>
       ) : (
-        <div className="card">
+        <div className="card next-event-empty">
           <Empty icon={CalendarDays} title="다음 운동을 준비 중이에요">
             일정이 등록되면 여기에서 확인할 수 있어요.
           </Empty>
@@ -153,7 +144,33 @@ export function HomeScreen() {
             }}
           </Resource>
         </>
+      ) : null}
+      <SectionTitle title="클럽 소식" href="/notices" />
+      {boot.announcements.length ? (
+        sortAnnouncements(boot.announcements as ClubRow[])
+          .slice(0, 3)
+          .map((n: ClubRow) => <NoticeCard key={n.id} notice={n} />)
       ) : (
+        <Empty icon={ClipboardList} title="새로운 소식을 준비 중이에요" />
+      )}
+      <SupportLinks />
+      {!boot.member && (
+        <div className="greeting">
+          <p>PLAY TOGETHER, SHINE TOGETHER</p>
+          <h1>
+            우리의 배구가
+            <br />더 빛나는 곳<span className="gold">.</span>
+          </h1>
+          <span className="greeting-caption">
+            함께 뛰고, 함께 성장하는 SpotLight
+          </span>
+        </div>
+      )}
+      <div className="club-wordmark">
+        <Volleyball size={18} />
+        <span>ONE TEAM. ONE SPOTLIGHT.</span>
+      </div>
+      {!boot.member && (
         <Link
           href={link(next ? `/events/${next.id}` : "/calendar")}
           className="guest-cta"
@@ -168,18 +185,6 @@ export function HomeScreen() {
           <ArrowRight size={19} />
         </Link>
       )}
-      <SectionTitle title="클럽 소식" href="/notices" />
-      {boot.announcements.length ? (
-        sortAnnouncements(boot.announcements as ClubRow[])
-          .slice(0, 3)
-          .map((n: ClubRow) => <NoticeCard key={n.id} notice={n} />)
-      ) : (
-        <Empty icon={ClipboardList} title="새로운 소식을 준비 중이에요" />
-      )}
-      <div className="club-wordmark">
-        <Volleyball size={18} />
-        <span>ONE TEAM. ONE SPOTLIGHT.</span>
-      </div>
     </>
   );
 }
@@ -208,29 +213,34 @@ export function Emergency() {
 export function EventCard({
   event,
   featured = false,
+  interactive = true,
 }: {
   event: ClubEvent;
   featured?: boolean;
+  interactive?: boolean;
 }) {
   const { link, screen, boot } = useApp();
   const kind = boot.scheduleKinds?.find((k: ClubRow) => k.key === event.kind);
-  return (
-    <Link
-      href={link(
-        `${screen.startsWith("/admin") ? "/admin" : ""}/events/${event.id}`,
-      )}
-      className={`event-card ${featured ? "featured" : ""} ${event.is_emergency || event.status === "cancelled" ? "urgent-event" : ""}`}
-    >
+  const kindLabel = kind?.label || eventKinds[event.kind] || event.kind;
+  const titleKey = event.title.replace(/\s/g, "").toLowerCase();
+  const repeatKind = [kindLabel, event.kind, event.kind + "day"].some((label) =>
+    titleKey.includes(label.replace(/\s/g, "").toLowerCase()),
+  );
+  const className = `event-card ${featured ? "featured" : ""} ${event.is_emergency || event.status === "cancelled" ? "urgent-event" : ""}`;
+  const content = (
+    <>
       <div className="event-top">
         <div className="event-badges">
-          <span
-            className={"badge " + event.kind}
-            style={{
-              borderLeft: "4px solid " + (kind?.color || "var(--navy)"),
-            }}
-          >
-            {kind?.label || eventKinds[event.kind] || event.kind}
-          </span>
+          {(boot.member || !repeatKind) && (
+            <span
+              className={"badge " + event.kind}
+              style={{
+                borderLeft: "4px solid " + (kind?.color || "var(--navy)"),
+              }}
+            >
+              {kind?.label || eventKinds[event.kind] || event.kind}
+            </span>
+          )}
           {(event.is_emergency || event.status === "cancelled") && (
             <Badge tone="red">
               {event.status === "cancelled" ? "운동 취소" : "긴급 변경"}
@@ -243,7 +253,7 @@ export function EventCard({
             : event.status === "completed"
               ? "종료"
               : "정기 운동"}
-          <ChevronRight size={16} />
+          {interactive && <ChevronRight size={16} />}
         </span>
       </div>
       <h3>{formatDate(event.starts_at)}</h3>
@@ -264,7 +274,19 @@ export function EventCard({
           <Volleyball size={35} strokeWidth={1} />
         </div>
       )}
+    </>
+  );
+  return interactive ? (
+    <Link
+      className={className}
+      href={link(
+        `${screen.startsWith("/admin") ? "/admin" : ""}/events/${event.id}`,
+      )}
+    >
+      {content}
     </Link>
+  ) : (
+    <article className={className}>{content}</article>
   );
 }
 
@@ -687,7 +709,7 @@ export function NoticeCard({ notice }: { notice: ClubRow }) {
         <ChevronRight size={18} />
       </button>
       {open && (
-        <Modal title={notice.title} close={() => setOpen(false)}>
+        <Modal centered title={notice.title} close={() => setOpen(false)}>
           <div className="prose">
             <p className="micro">
               공지 버전 v{notice.version || 1} ·{" "}
@@ -772,44 +794,9 @@ export function GuestGuide() {
         <Resource resource={resource}>
           {(d) => (
             <>
-              {d.event && <EventCard event={d.event} />}
+              {d.event && <EventCard event={d.event} interactive={false} />}
               <SectionTitle title="공지 및 필독사항" />
-              {d.announcements.length ? (
-                d.announcements.map((n: ClubRow) => (
-                  <details
-                    className={`card prose ${n.kind === "emergency" ? "urgent-notice" : ""}`}
-                    key={`${n.id}:${n.version}`}
-                  >
-                    <summary>
-                      <Badge
-                        tone={
-                          n.kind === "emergency"
-                            ? "red"
-                            : n.kind === "required"
-                              ? "gold"
-                              : ""
-                        }
-                      >
-                        {n.kind === "emergency"
-                          ? "긴급"
-                          : n.kind === "required"
-                            ? "필독"
-                            : n.kind === "event"
-                              ? "이벤트"
-                              : "공지"}
-                      </Badge>{" "}
-                      {n.title}
-                    </summary>
-                    <p>{n.content}</p>
-                    <small>버전 v{n.version || 1}</small>
-                  </details>
-                ))
-              ) : (
-                <p className="hint">
-                  현재 등록된 공개 공지가 없습니다. 신청서에서 운동 일정과 참가
-                  안내를 확인해주세요.
-                </p>
-              )}
+              <GuestNotices notices={d.announcements} />
               <label className="checkbox">
                 <input
                   type="checkbox"

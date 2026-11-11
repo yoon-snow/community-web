@@ -50,6 +50,8 @@
   color-scheme: light;
   --navy: #0f1f3d;
   --deep: #081426;
+  --accent-ink: #72560c;
+  --secondary-ink: #485569;
   --gold: #c9a227;
   --gold-light: #e4c968;
   --bg: #f7f7f5;
@@ -272,7 +274,7 @@ pre {
   align-items: center;
   gap: 3px;
   min-height: 51px;
-  color: #8b929f;
+  color: var(--secondary-ink);
   font-weight: 500;
 }
 .bottom-nav a > span {
@@ -300,7 +302,7 @@ pre {
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 1.65px;
-  color: #947617;
+  color: var(--accent-ink);
   margin: 0 0 13px;
 }
 .greeting h1 {
@@ -657,7 +659,7 @@ pre {
 .guest-cta small {
   display: block;
   font-size: 10px;
-  color: #7c704e;
+  color: var(--accent-ink);
   margin-top: 5px;
 }
 .circle-icon {
@@ -712,7 +714,7 @@ pre {
   gap: 7px;
   font-size: 8px;
   letter-spacing: 1.4px;
-  color: #8c94a2;
+  color: var(--secondary-ink);
   margin: 35px 0 3px;
 }
 .page-title {
@@ -757,7 +759,7 @@ pre {
 .empty h3 {
   font-size: 14px;
   line-height: 1.6;
-  color: #586376;
+  color: var(--secondary-ink);
   margin-bottom: 8px;
 }
 .empty p {
@@ -797,7 +799,7 @@ pre {
   gap: 4px;
 }
 .weekdays {
-  color: #9299a5;
+  color: var(--secondary-ink);
   font-size: 10px;
   text-align: center;
   margin-bottom: 10px;
@@ -922,11 +924,11 @@ i.cancelled {
 .field > span {
   font-size: 12px;
   font-weight: 600;
-  color: #4c586b;
+  color: var(--secondary-ink);
 }
 .field b {
   font-weight: 500;
-  color: #a28328;
+  color: var(--accent-ink);
 }
 .field input,
 .field select,
@@ -992,7 +994,7 @@ i.cancelled {
   font-size: 13px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  color: #4d596c;
+  color: var(--secondary-ink);
   line-height: 1.9;
 }
 .prose h2 {
@@ -1019,7 +1021,7 @@ i.cancelled {
   font-size: 13px;
   line-height: 1.9;
   white-space: pre-wrap;
-  color: #4d596c;
+  color: var(--secondary-ink);
   padding-top: 15px;
 }
 .divider {
@@ -1280,7 +1282,7 @@ i.cancelled {
   border-bottom: 0;
 }
 .menu-list svg:last-child {
-  color: #9ba2ad;
+  color: var(--secondary-ink);
 }
 .list-card {
   display: flex;
@@ -1375,7 +1377,7 @@ i.cancelled {
   border-radius: 12px;
   padding: 0 13px;
   background: #fff;
-  color: #8b94a4;
+  color: var(--secondary-ink);
   margin-bottom: 16px;
 }
 .search-box input {
@@ -1496,7 +1498,7 @@ i.cancelled {
 }
 .notification-card small {
   font-size: 9px;
-  color: #8d95a3;
+  color: var(--secondary-ink);
 }
 .notification-card.unread {
   background: #faf9f3;
@@ -2135,6 +2137,8 @@ i.match {
 }
 [data-theme="dark"] {
   color-scheme: dark;
+  --accent-ink: #f1d77a;
+  --secondary-ink: #c3cfe0;
   --bg: #081426;
   --card: #14233a;
   --text: #f1f5fb;
@@ -2469,3 +2473,18 @@ i.match {
   .app-bar .mode-link svg { display: none; }
   .app-bar .theme-select { width: 58px; }
 }
+
+.sheet.notice-dialog {
+  inset: 0;
+  margin: auto;
+  width: min(480px, calc(100% - 32px));
+  max-height: 82dvh;
+  border-radius: 16px;
+  padding: 20px;
+}
+.notice-dialog .sheet-handle { display: none; }
+input::placeholder, textarea::placeholder { color: var(--secondary-ink); opacity: 1; }
+.guest-etiquette ol { padding-inline-start: 1.5em; line-height: 1.7; }
+.guest-etiquette li + li { margin-top: .5em; }
+.form-notices > summary { font-weight: 700; }
+[data-theme="dark"] .badge.gold { color: var(--accent-ink); background: #423719; }

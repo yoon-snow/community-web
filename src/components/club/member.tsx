@@ -55,6 +55,7 @@ import {
   Pagination,
   paymentLabel,
 } from "./core";
+import { GuestNotices } from "./guest-notices";
 import { VideoCard } from "./video-card";
 import { VideoEditor } from "./admin-forms";
 import { AttendanceHistory } from "./attendance";
@@ -408,6 +409,14 @@ export function ApplicationForm({
           미리 확인할 수 있지만, 운영 설정이 완료되기 전에는 접수할 수 없어요.
         </div>
       )}
+      {!membership && step !== 3 && (
+        <details className="card prose form-notices">
+          <summary>공지 및 필독사항 확인하기</summary>
+          <Resource resource={guidance}>
+            {(d) => <GuestNotices notices={d.announcements} />}
+          </Resource>
+        </details>
+      )}
       <form
         key={step}
         ref={form}
@@ -608,28 +617,31 @@ export function ApplicationForm({
                   {guidance.error}
                 </p>
               )}
-              {confirmedNotices
-                .filter(
-                  (n: ClubRow) =>
-                    !membership ||
-                    n.kind === "required" ||
-                    n.kind === "emergency" ||
-                    n.kind === "general" ||
-                    n.kind === "event",
-                )
-                .map((n: ClubRow) => (
-                  <details key={n.id}>
-                    <summary>
-                      {n.kind === "emergency"
-                        ? "[긴급] "
-                        : n.kind === "required"
-                          ? "[필독] "
-                          : ""}
-                      {n.title} · v{n.version || 1}
-                    </summary>
-                    <p>{n.content}</p>
-                  </details>
-                ))}
+              {!membership && guidance.data && (
+                <GuestNotices notices={confirmedNotices} />
+              )}
+              {membership &&
+                confirmedNotices
+                  .filter(
+                    (n: ClubRow) =>
+                      n.kind === "required" ||
+                      n.kind === "emergency" ||
+                      n.kind === "general" ||
+                      n.kind === "event",
+                  )
+                  .map((n: ClubRow) => (
+                    <details key={n.id}>
+                      <summary>
+                        {n.kind === "emergency"
+                          ? "[긴급] "
+                          : n.kind === "required"
+                            ? "[필독] "
+                            : ""}
+                        {n.title} · v{n.version || 1}
+                      </summary>
+                      <p>{n.content}</p>
+                    </details>
+                  ))}
               {boot.member &&
                 boot.rules.map((r: ClubRow) => (
                   <details key={r.id}>

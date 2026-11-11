@@ -459,13 +459,7 @@ export function Screens({ screen }: { screen: string }) {
         admin={screen.startsWith("/admin/")}
       />
     );
-  if (screen === "/")
-    return (
-      <>
-        <HomeScreen />
-        <SupportLinks />
-      </>
-    );
+  if (screen === "/") return <HomeScreen />;
   if (screen === "/calendar" || screen === "/admin/calendar")
     return <CalendarScreen />;
   if (screen.startsWith("/admin/events/"))
