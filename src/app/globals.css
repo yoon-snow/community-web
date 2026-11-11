@@ -210,11 +210,13 @@ pre {
   flex-shrink: 0;
 }
 .app-bar-actions {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 4px;
 }
 .login-link {
+  white-space: nowrap;
   display: flex;
   align-items: center;
   gap: 7px;
@@ -2452,8 +2454,18 @@ i.match {
 .daily-guest .badge { flex-shrink: 0; }
 .daily-guests .chips { flex-wrap: wrap; }
 .mode-link { white-space: nowrap; border-radius: 12px; padding-inline: 8px; }
-@media (max-width: 420px) {
+@media (max-width: 480px) {
   .app-bar:has(.mode-link) .brand-mark { display: none; }
   .app-bar:has(.mode-link) { gap: 4px; padding-inline: 10px; }
   .app-bar:has(.mode-link) .app-bar-actions { gap: 2px; }
+}
+
+@media (max-width: 374px) {
+  .app-bar { padding-inline: 10px; gap: 4px; }
+  .app-bar .brand-mark { display: none; }
+}
+@media (max-width: 374px) {
+  .app-bar .mode-link { padding-inline: 4px; }
+  .app-bar .mode-link svg { display: none; }
+  .app-bar .theme-select { width: 58px; }
 }
