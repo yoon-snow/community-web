@@ -317,7 +317,7 @@ test("calendar date reveals details and emergency red marker; admin calendar kee
   await expect(page.locator(".day-event-description").first()).toContainText(
     "게스트 신청 가능",
   );
-  await expect(page.locator(".urgent-event").first()).toContainText("Game Day");
+  await expect(page.locator(".urgent-event").first()).toContainText("게임데이");
   await expect(page.getByRole("button", { name: "일정 추가" })).toHaveCount(0);
   await page.goto("/preview/admin/calendar?role=admin");
   await expect(

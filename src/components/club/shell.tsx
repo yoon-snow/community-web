@@ -5,8 +5,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   Bell,
-  Moon,
-  Sun,
   RefreshCw,
   CalendarDays,
   CheckCircle2,
@@ -128,22 +126,33 @@ export default function ClubApp() {
   const params = useSearchParams();
   const router = useRouter();
   const preview = pathname.startsWith("/preview");
-  const [dark, setDark] = useState(false);
+  const [theme, setTheme] = useState("auto");
   useEffect(() => {
-    const preference = localStorage.getItem("spotlight-theme");
-    setDark(
-      preference
-        ? preference === "dark"
-        : window.matchMedia("(prefers-color-scheme: dark)").matches,
-    );
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const sync = () => {
+      const saved = localStorage.getItem("spotlight-theme");
+      const value = saved === "light" || saved === "dark" ? saved : "auto";
+      setTheme(value);
+      document.documentElement.dataset.theme =
+        value === "auto" ? (media.matches ? "dark" : "light") : value;
+    };
+    sync();
+    media.addEventListener("change", sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      media.removeEventListener("change", sync);
+      window.removeEventListener("storage", sync);
+    };
   }, []);
-  useEffect(() => {
-    document.documentElement.dataset.theme = dark ? "dark" : "light";
-  }, [dark]);
-  const toggleTheme = () => {
-    const next = !dark;
-    setDark(next);
-    localStorage.setItem("spotlight-theme", next ? "dark" : "light");
+  const changeTheme = (value: string) => {
+    localStorage.setItem("spotlight-theme", value);
+    setTheme(value);
+    document.documentElement.dataset.theme =
+      value === "auto"
+        ? window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light"
+        : value;
   };
   const [boot, setBoot] = useState<any>(null);
   const [error, setError] = useState("");
@@ -334,17 +343,19 @@ export default function ClubApp() {
             href={link(adminScreen ? "/admin" : "/")}
             aria-label="SpotLight 홈"
           >
-            <Brand />
+            <Brand admin={adminScreen && boot.role === "admin"} />
           </Link>
           <div className="app-bar-actions">
-            <button
-              className="icon-button"
-              aria-label={dark ? "라이트모드로 변경" : "다크모드로 변경"}
-              aria-pressed={dark}
-              onClick={toggleTheme}
+            <select
+              aria-label="화면 테마"
+              className="theme-select"
+              value={theme}
+              onChange={(e) => changeTheme(e.target.value)}
             >
-              {dark ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
+              <option value="auto">자동</option>
+              <option value="light">라이트</option>
+              <option value="dark">다크</option>
+            </select>
             <button
               className="icon-button"
               aria-label="새로고침"

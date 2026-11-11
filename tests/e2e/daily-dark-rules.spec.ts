@@ -7,13 +7,18 @@ test("guest rules stay private, emergency is prominent, and dark preference surv
   await expect(page.locator(".urgent-excerpt")).toContainText(
     "미리보기용 예시",
   );
-  await page.getByRole("button", { name: "다크모드로 변경" }).click();
+  await page.getByLabel("화면 테마").selectOption("dark");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await expect(page.locator(".greeting h1")).toHaveCSS(
     "color",
     "rgb(241, 245, 251)",
   );
   await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.getByLabel("화면 테마").selectOption("auto");
+  await page.emulateMedia({colorScheme: "light"});
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.emulateMedia({colorScheme: "dark"});
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.goto("/preview/rules?role=guest");
   await expect(page.getByText("회원 전용 회칙입니다")).toBeVisible();
@@ -41,6 +46,12 @@ test("admin daily guests show personal details with age filters", async ({
     "1998-01-01",
   );
   await expect(page.locator(".daily-guest").first()).toContainText("2년");
+  await expect(page.locator(".brand")).toContainText("운영진 모드");
+  await page.getByRole("button", {name:"확인 전 2명"}).click();
+  await expect(page.locator(".daily-guest")).toHaveCount(2);
+  await page.getByRole("button", {name:"입금완료 4명"}).click();
+  await expect(page.locator(".daily-guest")).toHaveCount(4);
+  await page.getByRole("button", {name:"신청 6명"}).click();
   await page.getByRole("button", { name: "미성년", exact: true }).click();
   await expect(page.locator(".daily-guest")).toHaveCount(0);
   await page.getByRole("button", { name: "성인", exact: true }).click();

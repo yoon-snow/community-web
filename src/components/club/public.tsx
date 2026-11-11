@@ -76,28 +76,22 @@ export function HomeScreen() {
   return (
     <>
       <Emergency />
-      <div className="greeting">
-        <p>
-          {boot.member ? "다시 만나 반가워요" : "PLAY TOGETHER, SHINE TOGETHER"}
-        </p>
-        <h1>
-          {boot.member ? (
-            <>
-              {boot.member.name}님,
-              <br />
-              오늘도 코트에서 빛나요<span className="gold">.</span>
-            </>
-          ) : (
-            <>
-              우리의 배구가
-              <br />더 빛나는 곳<span className="gold">.</span>
-            </>
-          )}
+      {boot.member ? (
+        <h1 className="member-hello">
+          {boot.member.name}님, 다음 운동을 확인하세요.
         </h1>
-        <span className="greeting-caption">
-          함께 뛰고, 함께 성장하는 SpotLight
-        </span>
-      </div>
+      ) : (
+        <div className="greeting">
+          <p>PLAY TOGETHER, SHINE TOGETHER</p>
+          <h1>
+            우리의 배구가
+            <br />더 빛나는 곳<span className="gold">.</span>
+          </h1>
+          <span className="greeting-caption">
+            함께 뛰고, 함께 성장하는 SpotLight
+          </span>
+        </div>
+      )}
       {next ? (
         <>
           <SectionTitle title="다음 운동" href="/calendar" label="일정 보기" />
@@ -296,9 +290,9 @@ export function EventActions({ event }: { event: ClubEvent }) {
             <span>내 참석 응답</span>
             <Badge tone={d.response === "yes" ? "green" : "neutral"}>
               {d.response === "yes"
-                ? "참석"
+                ? "✓ 참석으로 응답했어요"
                 : d.response === "no"
-                  ? "불참"
+                  ? "불참으로 응답했어요"
                   : "미응답"}
             </Badge>
           </p>
@@ -457,6 +451,7 @@ export function CalendarScreen() {
                 return (
                   <button
                     aria-label={`${day}${e.length ? `, 일정 ${e.length}개, ${e.map((v: ClubEvent) => (v.is_emergency || v.status === "cancelled" ? "긴급 변경" : byKind.get(v.kind)?.label || eventKinds[v.kind])).join(", ")}` : ""}`}
+                    aria-current={seoulDate() === day ? "date" : undefined}
                     aria-pressed={selected === day}
                     className={`${selected === day ? "selected" : ""} ${seoulDate() === day ? "today" : ""}`}
                     key={day}
@@ -518,7 +513,7 @@ export function CalendarScreen() {
                   <Badge tone={canApplyAsGuest(e) ? "green" : ""}>
                     {guestAvailability(e)}
                   </Badge>
-                  {e.is_emergency && (
+                  {e.change_reason && (
                     <p className="emergency-change">{e.change_reason}</p>
                   )}
                 </div>
@@ -558,9 +553,11 @@ export function EventScreen({ id }: { id: string }) {
           <>
             <EventCard event={d.event} featured />
             <div className="card prose">
-              {d.event.is_emergency && (
+              {(d.event.is_emergency || d.event.change_reason) && (
                 <div className="emergency-change" role="alert">
-                  <strong>긴급 변경 안내</strong>
+                  <strong>
+                    {d.event.is_emergency ? "긴급 변경 안내" : "일정 변경 안내"}
+                  </strong>
                   <p>{d.event.change_reason}</p>
                 </div>
               )}

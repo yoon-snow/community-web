@@ -52,6 +52,31 @@ export function EventEditor({
     <Modal title={event ? "운동 일정 수정" : "새 운동 일정"} close={close}>
       <SaveForm
         onSubmit={async (f) => {
+          const start = String(f.get("starts_at"));
+          const end = String(f.get("ends_at"));
+          let reason = String(f.get("change_reason") || "").trim();
+          if (
+            event &&
+            (local(event.starts_at) !== start || local(event.ends_at) !== end)
+          ) {
+            const range = (a: string, b: string) =>
+              a.replace("T", " ") +
+              "–" +
+              (a.slice(0, 10) === b.slice(0, 10)
+                ? b.slice(11)
+                : b.replace("T", " "));
+            const change =
+              "기존 " +
+              range(local(event.starts_at), local(event.ends_at)) +
+              " → 변경 " +
+              range(start, end);
+            reason = [
+              change,
+              reason.replace(/^기존 \d{4}-[^\n]+ → 변경 [^\n]+(?:\n|$)/, ""),
+            ]
+              .filter(Boolean)
+              .join("\n");
+          }
           await mutate(
             "admin/events",
             {
@@ -64,7 +89,7 @@ export function EventEditor({
               description: f.get("description"),
               guests_open: f.has("guests_open"),
               is_emergency: urgent,
-              change_reason: f.get("change_reason") || "",
+              change_reason: reason,
               guest_fee: Number(f.get("guest_fee")),
               status: f.get("status") || "scheduled",
             },
@@ -153,13 +178,13 @@ export function EventEditor({
           />
           <span>긴급 변경 · 캘린더에 빨간색으로 표시</span>
         </label>
-        {urgent && (
+        {(urgent || event) && (
           <Field
-            label="긴급 변경 안내"
+            label={urgent ? "긴급 변경 안내" : "일정 변경 안내"}
             name="change_reason"
             value={event?.change_reason}
             type="textarea"
-            required
+            required={urgent}
             placeholder="체육관 또는 시간 변경 내용을 입력해주세요."
           />
         )}

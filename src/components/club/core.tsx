@@ -1,4 +1,5 @@
 "use client";
+import { ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
 import {
@@ -427,7 +428,7 @@ export function ErrorBoxStandalone({
   );
 }
 
-export function Brand() {
+export function Brand({ admin = false }: { admin?: boolean } = {}) {
   return (
     <div className="brand">
       <span className="brand-mark">
@@ -440,7 +441,15 @@ export function Brand() {
       </span>
       <span>
         SPOT<span className="gold">LIGHT</span>
-        <small>VOLLEYBALL CLUB</small>
+        <small>
+          {admin ? (
+            <>
+              <ShieldCheck size={12} /> 운영진 모드
+            </>
+          ) : (
+            "VOLLEYBALL CLUB"
+          )}
+        </small>
       </span>
     </div>
   );

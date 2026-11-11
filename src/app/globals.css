@@ -2440,3 +2440,20 @@ i.match {
   gap: 0.4rem;
   overflow-wrap: anywhere;
 }
+
+.member-hello { font-size: 1rem; margin: 4px 0 12px; color: var(--text); }
+.theme-select { min-height: 40px; max-width: 66px; background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 12px; padding-inline: 4px; font: inherit; font-size: 12px; }
+.brand small svg { vertical-align: middle; }
+.ops-shell .brand small { letter-spacing: .03em; }
+.calendar-grid > button.today { box-shadow: inset 0 0 0 2px var(--gold); }
+.calendar-grid > button.today > span { text-decoration: none; }
+.emergency-change { white-space: pre-line; }
+.daily-guest .guest-summary { min-width: 0; overflow-wrap: anywhere; }
+.daily-guest .badge { flex-shrink: 0; }
+.daily-guests .chips { flex-wrap: wrap; }
+.mode-link { white-space: nowrap; border-radius: 12px; padding-inline: 8px; }
+@media (max-width: 420px) {
+  .app-bar:has(.mode-link) .brand-mark { display: none; }
+  .app-bar:has(.mode-link) { gap: 4px; padding-inline: 10px; }
+  .app-bar:has(.mode-link) .app-bar-actions { gap: 2px; }
+}

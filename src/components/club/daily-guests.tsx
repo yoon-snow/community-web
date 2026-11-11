@@ -12,6 +12,7 @@ export function DailyGuests() {
   const { link } = useApp();
   const resource = useResource("admin/daily-guests");
   const [filter, setFilter] = useState("all");
+  const [payments, setPayments] = useState<Record<string, string>>({});
   const today = seoulDate();
   return (
     <section className="daily-guests">
@@ -42,16 +43,37 @@ export function DailyGuests() {
                 <p className="micro">등록된 운동이 없습니다.</p>
               )}
               {day.events.map((event: ClubRow) => {
-                const rows = event.applications.filter(
-                  (g: ClubRow) =>
-                    filter === "all" ||
-                    guestAgeGroup(g.birth_date, today) === filter,
-                );
+                const guests: ClubRow[] = event.applications;
+                const paid = guests.filter((g) => g.payment === "paid").length;
+                const payment = payments[event.id] || "all";
+                const rows = guests
+                  .filter(
+                    (g) =>
+                      payment === "all" ||
+                      (payment === "paid") === (g.payment === "paid"),
+                  )
+                  .filter(
+                    (g: ClubRow) =>
+                      filter === "all" ||
+                      guestAgeGroup(g.birth_date, today) === filter,
+                  );
                 return (
                   <div key={event.id}>
-                    <h4>
-                      {event.title} · 신청 {event.applications.length}명
-                    </h4>
+                    <h4>{event.title}</h4>
+                    <Chips
+                      value={payment}
+                      onChange={(v) =>
+                        setPayments((prev) => ({ ...prev, [event.id]: v }))
+                      }
+                      items={[
+                        { value: "all", label: `신청 ${guests.length}명` },
+                        { value: "paid", label: `입금완료 ${paid}명` },
+                        {
+                          value: "pending",
+                          label: `확인 전 ${guests.length - paid}명`,
+                        },
+                      ]}
+                    />
                     {rows.length ? (
                       rows.map((g: ClubRow) => (
                         <Link
@@ -60,7 +82,11 @@ export function DailyGuests() {
                           key={g.id}
                         >
                           <div>
-                            <strong>{g.name}</strong>
+                            <span className="guest-summary">
+                              <strong>{g.name}</strong> ·{" "}
+                              {g.position || "포지션 미입력"} ·{" "}
+                              {g.experience || "경력 미입력"}
+                            </span>
                             <Badge
                               tone={g.payment === "paid" ? "green" : "warning"}
                             >
@@ -69,20 +95,6 @@ export function DailyGuests() {
                                 : "입금확인 전"}
                             </Badge>
                           </div>
-                          <dl>
-                            <div>
-                              <dt>생년월일</dt>
-                              <dd>{g.birth_date || "미입력"}</dd>
-                            </div>
-                            <div>
-                              <dt>희망 포지션</dt>
-                              <dd>{g.position || "미입력"}</dd>
-                            </div>
-                            <div>
-                              <dt>경력</dt>
-                              <dd>{g.experience || "미입력"}</dd>
-                            </div>
-                          </dl>
                           <small>
                             {
                               {
@@ -91,6 +103,7 @@ export function DailyGuests() {
                                 unknown: "생년월일 확인 필요",
                               }[guestAgeGroup(g.birth_date, today)]
                             }
+                            · {g.birth_date || "생년월일 미입력"}
                           </small>
                         </Link>
                       ))
