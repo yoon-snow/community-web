@@ -2509,3 +2509,18 @@ input::placeholder, textarea::placeholder { color: var(--secondary-ink); opacity
 button.emergency { width: 100%; text-align: left; }
 .ops-switch { display:flex; gap:8px; margin:16px 0; }
 .ops-switch a { flex:1; }
+
+/* Standalone actions need the same separation as the cards beside them. */
+.content > .button.full + :is(.card, .button.full, .list-card),
+.content > .button.full + .support-links {
+  margin-block-start: 14px;
+}
+.preview-rule-list { padding-inline-start: 1.65rem; margin-bottom: 0; }
+.preview-rule-list li { padding: 10px 4px; }
+.preview-rule-list li + li { border-top: 1px solid var(--border); }
+.conversation { display: grid; gap: 12px; }
+.post-comments { border-top: 1px solid var(--border); margin-top: 20px; padding-top: 12px; }
+.post-comments textarea { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text); }
+.post-comment { padding-block: 12px; border-bottom: 1px solid var(--border); }
+.post-comment p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.post-options summary { cursor: pointer; padding-block: 12px; }

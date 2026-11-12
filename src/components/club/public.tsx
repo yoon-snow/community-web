@@ -48,6 +48,7 @@ import {
   paymentLabel,
   Pagination,
 } from "./core";
+import { PostComments } from "./post-comments";
 import { SupportLinks } from "./support-links";
 import { GuestNotices } from "./guest-notices";
 import { VideoCard } from "./video-card";
@@ -742,6 +743,7 @@ function NoticeDialog({
         </Badge>
         <p>{notice.content}</p>
       </div>
+      <PostComments post={notice.id} />
     </Modal>
   );
 }
@@ -858,6 +860,9 @@ export function RulesScreen({
     return (
       <Empty icon={BookOpen} title="회원 전용 회칙입니다">
         승인된 회원 계정으로 로그인하면 열람할 수 있습니다.
+        <Link className="button secondary full" href="/account">
+          로그인하기
+        </Link>
       </Empty>
     );
   const articles: ClubRow[] = (boot.rules as ClubRow[]).flatMap((r) => {
@@ -869,6 +874,30 @@ export function RulesScreen({
     );
     return version ? [{ ...r, version }] : [];
   });
+  if (boot.preview)
+    return (
+      <>
+        <PageTitle
+          eyebrow="CLUB HANDBOOK"
+          title={guestRules ? "게스트 규정 목차" : "SpotLight 회칙"}
+        />
+        <section className="card handbook-index" aria-label="회칙 목차">
+          <h2>원본 회칙 목차</h2>
+          <ol className="preview-rule-list">
+            {articles.map((r) => (
+              <li key={r.id}>{r.title}</li>
+            ))}
+          </ol>
+        </section>
+        <p>회칙 전문은 운영 앱에서 로그인한 뒤 확인할 수 있어요.</p>
+        <Link
+          className="button primary full"
+          href={guestRules ? "/admin/guest-rules" : "/rules"}
+        >
+          운영 앱에서 회칙 보기
+        </Link>
+      </>
+    );
   return (
     <>
       <PageTitle

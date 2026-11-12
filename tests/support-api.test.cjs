@@ -110,3 +110,18 @@ test("guest links require matching token and ticket, and cannot reach admin or m
   assert.equal(await call("admin/" + id, token, null), 403);
   assert.equal(await call("mine", token, null), 401);
 });
+
+test("receipt lookup matches submission phone and returns only the receipt summary", async () => {
+  const id="55555555-5555-4555-8555-555555555555";
+  const row={id,answers:{name:"비공개",phone:"01012345678"},self_reported_paid:true,events:{title:"게임데이"},guest_payments:[{status:"pending",amount:5000}]};
+  const db={rpc:async()=>({data:true}),from:()=>({select:()=>({eq:(_,value)=>({maybeSingle:async()=>({data:value===id?row:null})})})})};
+  const handler=route({},db);
+  const call=(phone)=>handler.POST(new Request("https://club.example/api/support/receipt",{method:"POST",headers:{Origin:"https://club.example","Content-Type":"application/json"},body:JSON.stringify({id,phone})}),{params:Promise.resolve({path:["receipt"]})});
+  assert.equal((await call("01011112222")).status,404);
+  const response=await call("010-1234-5678");
+  assert.equal(response.status,200);
+  const result=await response.json();
+  assert.equal(result.payment.status,"pending");
+  assert.equal(result.self_reported_paid,true);
+  assert.ok(!("answers" in result));
+});

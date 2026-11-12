@@ -89,6 +89,72 @@ function demoResult(path: string) {
     payment: null,
   };
 }
+type RoomLink = { id: string; token: string };
+function savedRooms(): RoomLink[] {
+  try {
+    const list = JSON.parse(localStorage.getItem("spot-guest-rooms") || "[]");
+    return Array.isArray(list)
+      ? list.filter(
+          (r) =>
+            r && /^[0-9a-f-]{36}$/.test(r.id) && /^[\w-]{43}$/.test(r.token),
+        )
+      : [];
+  } catch {
+    return [];
+  }
+}
+function rememberRoom(id: string, token: string) {
+  try {
+    localStorage.setItem(
+      "spot-guest-rooms",
+      JSON.stringify(
+        [{ id, token }, ...savedRooms().filter((r) => r.id !== id)].slice(
+          0,
+          50,
+        ),
+      ),
+    );
+  } catch {}
+}
+export function GuestRooms() {
+  const { link, boot } = useApp();
+  const [rooms, setRooms] = useState<RoomLink[]>([]);
+  useEffect(() => {
+    if (!boot.preview) setRooms(savedRooms());
+  }, [boot.preview]);
+  return (
+    <div className="support">
+      <h1>내 문의 대화방</h1>
+      <p>이 기기에 저장한 전용 링크로 대화를 이어갈 수 있어요.</p>
+      {boot.preview ? (
+        <Link className="card" href={link("/support/" + demoId)}>
+          예시 문의 대화방
+        </Link>
+      ) : rooms.length ? (
+        rooms.map((r) => (
+          <article className="card" key={r.id}>
+            <Link href={link("/support/" + r.id) + "#key=" + r.token}>
+              내 문의 · {r.id.slice(-8)}
+            </Link>
+            <button
+              className="text-button"
+              onClick={() => {
+                const next = rooms.filter((x) => x.id !== r.id);
+                localStorage.setItem("spot-guest-rooms", JSON.stringify(next));
+                setRooms(next);
+              }}
+            >
+              이 기기에서 지우기
+            </button>
+          </article>
+        ))
+      ) : (
+        <p>저장된 대화방이 없습니다.</p>
+      )}
+      <Link href={link("/support")}>문의센터로</Link>
+    </div>
+  );
+}
 function secret() {
   return new URLSearchParams(location.hash.slice(1)).get("key") || "";
 }
@@ -108,7 +174,7 @@ async function request(path: string, body?: FormData | object) {
   if (!r.ok) throw new Error(result.error || "잠시 후 다시 시도해주세요.");
   return result;
 }
-export function useSupport(path: string) {
+export function useSupport(path: string, poll = false) {
   const { boot, revision } = useApp();
   const [version, setVersion] = useState(0);
   const [state, setState] = useState<{
@@ -116,6 +182,18 @@ export function useSupport(path: string) {
     data?: any;
     error?: string;
   }>({ path: "" });
+  useEffect(() => {
+    if (!poll || boot.preview) return;
+    const tick = () => {
+      if (document.visibilityState === "visible") setVersion((v) => v + 1);
+    };
+    const timer = window.setInterval(tick, 10000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, [poll, boot.preview]);
   useEffect(() => {
     let alive = true;
     const fetcher = boot.preview
@@ -316,11 +394,14 @@ export function SupportHome() {
           찾는 답변이 없어요 · 운영진 문의
         </button>
       )}
-      {boot.member && (
-        <Link className="button secondary full" href={link("/support/mine")}>
+      {
+        <Link
+          className="button secondary full"
+          href={link(boot.member ? "/support/mine" : "/support/rooms")}
+        >
           내 문의
         </Link>
-      )}
+      }
     </div>
   );
 }
@@ -409,6 +490,7 @@ function Compose({
         d.set("proof", app.proof);
       }
       const r = await request("create", d);
+      if (r.token && d.has("remember")) rememberRoom(r.id, r.token);
       router.replace(
         link("/support/" + r.id) + (r.token ? "#key=" + r.token : ""),
       );
@@ -424,6 +506,12 @@ function Compose({
       </button>
       <h1>운영진 문의</h1>
       <form className="card support-form" onSubmit={submit}>
+        {!boot.member && (
+          <label>
+            <input name="remember" type="checkbox" defaultChecked /> 이 기기에
+            내 대화방 저장
+          </label>
+        )}
         {faq ? (
           <div className="support-answer">
             <small>
@@ -625,11 +713,13 @@ export function Inbox({ admin = false }: { admin?: boolean }) {
 export function Thread({ id, admin }: { id: string; admin: boolean }) {
   const { boot, link, mutate } = useApp(),
     path = (admin ? "admin/" : "") + id;
-  const { data, error, reload } = useSupport(path),
+  const { data, error, reload } = useSupport(path, true),
     catalog = useSupport("catalog");
   const [msg, setMsg] = useState(""),
     [busy, setBusy] = useState(false),
     [copy, setCopy] = useState(false);
+  const [auto, setAuto] = useState(false),
+    [demoAnswer, setDemoAnswer] = useState("");
   async function action(cb: () => Promise<any>) {
     if (busy) return;
     setMsg("");
@@ -658,7 +748,11 @@ export function Thread({ id, admin }: { id: string; admin: boolean }) {
       <Link
         className="support-back"
         href={link(
-          admin ? "/admin/support" : boot.member ? "/support/mine" : "/support",
+          admin
+            ? "/admin/support"
+            : boot.member
+              ? "/support/mine"
+              : "/support/rooms",
         )}
       >
         ← {admin ? "문의 관리" : boot.member ? "내 문의" : "문의센터"}
@@ -695,6 +789,15 @@ export function Thread({ id, admin }: { id: string; admin: boolean }) {
             }}
           >
             전용 링크 복사
+          </button>
+          <button
+            className="text-button"
+            onClick={() => {
+              if (!boot.preview && secret()) rememberRoom(id, secret());
+              setMsg("이 기기에 저장했습니다.");
+            }}
+          >
+            대화방 목록에 저장
           </button>
           {copy && (
             <input
@@ -778,21 +881,72 @@ export function Thread({ id, admin }: { id: string; admin: boolean }) {
         </section>
       )}
       <h2>문의 대화</h2>
-      {messages.map((m) => (
-        <article
-          className={"support-message " + (m.sender === "admin" ? "staff" : "")}
-          key={m.id}
-        >
-          <strong>{m.sender === "admin" ? "운영진" : t.name}</strong>
-          <p>{m.body}</p>
-          {m.images.map((src) => (
-            <a key={src} href={src} target="_blank" rel="noreferrer">
-              <img src={src} alt="문의 첨부 사진" />
-            </a>
-          ))}
-          <small>{stamp(m.created_at)}</small>
-        </article>
-      ))}
+      <div className="conversation" role="log" aria-label="대화 내용">
+        {messages.map((m) => (
+          <article
+            className={
+              "support-message " + (m.sender === "admin" ? "staff" : "")
+            }
+            key={m.id}
+          >
+            <strong>
+              {m.sender === "bot"
+                ? "자동응답"
+                : m.sender === "admin"
+                  ? "운영진"
+                  : t.name}
+            </strong>
+            <p>{m.body}</p>
+            {m.images.map((src) => (
+              <a key={src} href={src} target="_blank" rel="noreferrer">
+                <img src={src} alt="문의 첨부 사진" />
+              </a>
+            ))}
+            <small>{stamp(m.created_at)}</small>
+          </article>
+        ))}
+        {demoAnswer && (
+          <article className="support-message">
+            <strong>자동응답</strong>
+            <p>{demoAnswer}</p>
+          </article>
+        )}
+      </div>
+      <button
+        className="button secondary"
+        aria-expanded={auto}
+        onClick={() => setAuto(!auto)}
+      >
+        자주 묻는 질문 자동응답
+      </button>
+      {auto && (
+        <section className="card">
+          {(catalog.data?.faqs || [])
+            .filter((f: FAQ) =>
+              forAudience(f.category_id, t.member_id ? "member" : "guest"),
+            )
+            .map((f: FAQ) => (
+              <button
+                className="support-question"
+                key={f.id}
+                disabled={busy}
+                onClick={() => {
+                  if (boot.preview) {
+                    setDemoAnswer(f.answer);
+                    setAuto(false);
+                    return;
+                  }
+                  void action(async () => {
+                    await request(path + "/auto-answer", { faq: f.id });
+                    setAuto(false);
+                  });
+                }}
+              >
+                {f.question}
+              </button>
+            ))}
+        </section>
+      )}
       <form
         className="card support-form"
         onSubmit={(e) => {

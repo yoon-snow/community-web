@@ -258,6 +258,7 @@ export function NoticeEditor({
   return (
     <Modal title={n ? "공지 수정" : "새 공지"} close={close}>
       <SaveForm
+        submit={n ? "수정 저장" : "게시하기"}
         onSubmit={async (f) => {
           await mutate(
             "admin/notices",
@@ -288,6 +289,7 @@ export function NoticeEditor({
           required
           rows={7}
         />
+
         <Field label="유형" name="kind" value={n?.kind || "general"}>
           {[
             { value: "general", label: "일반 공지" },
@@ -315,26 +317,29 @@ export function NoticeEditor({
             </option>
           ))}
         </Field>
-        <Field
-          label="게시 시작 · 한국 시간 (비우면 즉시)"
-          name="starts_at"
-          type="datetime-local"
-          value={
-            n?.starts_at
-              ? `${seoulDate(n.starts_at)}T${formatTime(n.starts_at)}`
-              : undefined
-          }
-        />
-        <Field
-          label="게시 종료 · 한국 시간 (선택)"
-          name="ends_at"
-          type="datetime-local"
-          value={
-            n?.ends_at
-              ? `${seoulDate(n.ends_at)}T${formatTime(n.ends_at)}`
-              : undefined
-          }
-        />
+        <details className="post-options">
+          <summary>예약 게시 · 게시 종료 설정</summary>
+          <Field
+            label="게시 시작 · 한국 시간 (비우면 즉시)"
+            name="starts_at"
+            type="datetime-local"
+            value={
+              n?.starts_at
+                ? `${seoulDate(n.starts_at)}T${formatTime(n.starts_at)}`
+                : undefined
+            }
+          />
+          <Field
+            label="게시 종료 · 한국 시간 (선택)"
+            name="ends_at"
+            type="datetime-local"
+            value={
+              n?.ends_at
+                ? `${seoulDate(n.ends_at)}T${formatTime(n.ends_at)}`
+                : undefined
+            }
+          />
+        </details>
       </SaveForm>
       {n && (
         <details className="prose">

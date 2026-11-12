@@ -1700,11 +1700,11 @@ export function AdminNotices() {
         }
         action={
           <button
-            className="icon-button bordered"
+            className="button primary compact"
             aria-label="공지 등록"
             onClick={() => setEdit(true)}
           >
-            <Plus />
+            <Plus size={16} /> 글쓰기
           </button>
         }
       />

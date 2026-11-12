@@ -381,7 +381,14 @@ export function ApplicationForm({
             접수 번호를 저장해주세요. 확인이 필요하면 운영진에게 알려주세요.
           </p>
         </div>
-        {!membership && <SupportLinks category="payment" />}
+        {!membership && (
+          <>
+            <Link className="button secondary full" href={link("/receipt")}>
+              내 게스트 신청 확인
+            </Link>
+            <SupportLinks category="payment" />
+          </>
+        )}
         <Link href={link("/")} className="button primary full">
           홈으로 돌아가기
         </Link>
@@ -398,6 +405,11 @@ export function ApplicationForm({
         title={steps[step]}
         description={`${step + 1} / 5 · ${membership ? "함께할 준비를 시작해요" : "계정 없이 편하게 신청하세요"}`}
       />
+      {!membership && step === 0 && (
+        <Link className="text-button" href={link("/receipt")}>
+          이미 신청하셨나요? 내 신청 조회
+        </Link>
+      )}
       <div className="progress" aria-label={`${step + 1}/5 단계`}>
         {steps.map((s, i) => (
           <span key={s} className={i <= step ? "filled" : ""} />

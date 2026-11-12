@@ -57,6 +57,14 @@ const VideoDetailScreen = dynamic(
   () => import("./member").then((m) => m.VideoDetailScreen),
   { loading: Loader },
 );
+const GuestRooms = dynamic(
+  () => import("./support").then((m) => m.GuestRooms),
+  { loading: Loader },
+);
+const ReceiptScreen = dynamic(
+  () => import("./receipt").then((m) => m.ReceiptScreen),
+  { loading: Loader },
+);
 const SupportHome = dynamic(
   () => import("./support").then((m) => m.SupportHome),
   { loading: Loader },
@@ -171,7 +179,7 @@ export default function ClubApp() {
   useEffect(() => {
     let live = true;
     const request = preview
-      ? import("@/lib/preview").then(({ previewData }) =>
+      ? import("@/lib/club-preview").then(({ previewData }) =>
           previewData(params.get("role") || "guest"),
         )
       : api("bootstrap");
@@ -449,6 +457,7 @@ export default function ClubApp() {
 
 export function Screens({ screen }: { screen: string }) {
   if (screen === "/support") return <SupportHome />;
+  if (screen === "/support/rooms") return <GuestRooms />;
   if (screen === "/support/mine") return <SupportInbox />;
   if (screen === "/admin/support") return <SupportInbox admin />;
   if (screen === "/admin/support/faqs") return <FaqEditor />;
@@ -467,6 +476,7 @@ export function Screens({ screen }: { screen: string }) {
   if (screen === "/guest-guide") return <GuestGuide />;
   if (screen.startsWith("/events/"))
     return <EventScreen id={screen.split("/")[2]} />;
+  if (screen === "/receipt") return <ReceiptScreen />;
   if (screen === "/apply") return <ApplicationForm />;
   if (screen === "/join") return <ApplicationForm membership />;
   if (screen === "/notices") return <NoticesScreen />;

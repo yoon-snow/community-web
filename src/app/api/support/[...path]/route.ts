@@ -119,6 +119,44 @@ async function handle(req: Request, ctx: Ctx) {
     return { categories: data(cats), faqs: data(faqs) };
   }
   const db = serviceClient();
+  if (route === "receipt" && write) {
+    await throttle(db, req, "receipt", 30);
+    const input = z
+      .object({
+        id: uuid,
+        proof: z.string().max(64).optional(),
+        phone: z.string().max(20).optional(),
+      })
+      .parse(await req.json());
+    const signed = Boolean(input.proof && validReceipt(input.id, input.proof));
+    const phone = normalizePhone(input.phone || "");
+    const missing = () =>
+      new HttpError(404, "접수번호와 신청 당시 연락처를 확인해주세요.");
+    if (!signed && !/^01[0-9]{8,9}$/.test(phone)) throw missing();
+    const app = data(
+      await db
+        .from("guest_applications")
+        .select(
+          "id,submitted_at,self_reported_paid,answers,events(title,starts_at,ends_at,location,status),guest_payments(status,amount)",
+        )
+        .eq("id", input.id)
+        .maybeSingle(),
+    );
+    if (
+      !app ||
+      (!signed && normalizePhone(String(app.answers?.phone || "")) !== phone)
+    )
+      throw missing();
+    return {
+      receipt: app.id,
+      submitted_at: app.submitted_at,
+      self_reported_paid: app.self_reported_paid,
+      event: Array.isArray(app.events) ? app.events[0] : app.events,
+      payment: Array.isArray(app.guest_payments)
+        ? app.guest_payments[0]
+        : app.guest_payments,
+    };
+  }
   if (route === "view" && write) {
     const { id } = z.object({ id: uuid }).parse(await req.json());
     await throttle(db, req, "faq", 240);
@@ -198,7 +236,8 @@ async function handle(req: Request, ctx: Ctx) {
   if (
     !creating &&
     (segments.length > 2 ||
-      (segments.length === 2 && !["reply", "status"].includes(segments[1])))
+      (segments.length === 2 &&
+        !["reply", "status", "auto-answer"].includes(segments[1])))
   )
     denied();
   const id = creating ? randomUUID() : uuid.parse(segments[0]);
@@ -224,6 +263,12 @@ async function handle(req: Request, ctx: Ctx) {
     }
     ticket = data(await query.maybeSingle());
     if (!ticket) denied();
+    if (write && segments[1] === "auto-answer") {
+      await throttle(db, req, "auto-answer", 45);
+      const faq = uuid.parse((await req.json()).faq);
+      data(await db.rpc("inquiry_faq_reply", { p_ticket: id, p_faq: faq }));
+      return { ok: true };
+    }
     if (!write && segments.length === 1) {
       const messages =
         data(

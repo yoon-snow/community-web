@@ -57,7 +57,7 @@ export function useResource(path: string | null) {
     setError("");
     setData(null);
     (boot.preview
-      ? import("@/lib/preview").then(({ previewResource }) =>
+      ? import("@/lib/club-preview").then(({ previewResource }) =>
           previewResource(path, boot),
         )
       : api(path)
