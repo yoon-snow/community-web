@@ -59,6 +59,8 @@
   --text: #101828;
   --muted: #667085;
   --border: #e8e9ec;
+  --block-gap: 16px;
+  --control-gap: 12px;
   --green: #16a34a;
   --green-text: #15803d;
   --warning: #f59e0b;
@@ -249,7 +251,12 @@ pre {
   border: 1px solid var(--border);
   background: #fff;
 }
+/* The page owns the space between blocks, including asynchronously loaded rows. */
 .content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  row-gap: var(--block-gap);
   padding: 23px 24px calc(112px + env(safe-area-inset-bottom));
   min-height: calc(100dvh - 86px);
 }
@@ -2510,11 +2517,6 @@ button.emergency { width: 100%; text-align: left; }
 .ops-switch { display:flex; gap:8px; margin:16px 0; }
 .ops-switch a { flex:1; }
 
-/* Standalone actions need the same separation as the cards beside them. */
-.content > .button.full + :is(.card, .button.full, .list-card),
-.content > .button.full + .support-links {
-  margin-block-start: 14px;
-}
 .preview-rule-list { padding-inline-start: 1.65rem; margin-bottom: 0; }
 .preview-rule-list li { padding: 10px 4px; }
 .preview-rule-list li + li { border-top: 1px solid var(--border); }
@@ -2551,4 +2553,30 @@ button.emergency { width: 100%; text-align: left; }
   border-inline-start: 2px solid var(--border);
   padding-inline-start: 0.8rem;
   margin-block: 0.7rem;
+}
+
+/* Child margins would otherwise add to the page grid. Dialogs position themselves. */
+.content > :not(dialog) {
+  margin-block: 0;
+  min-width: 0;
+}
+.content > :is(.section-title, .club-wordmark, .daily-guests):not(:first-child) {
+  margin-block-start: 8px;
+}
+.content > :is(.back, .text-button, .badge) {
+  justify-self: start;
+}
+
+/* Controls inside ordinary cards also appear outside the shared form layout. */
+.card:not(.form, .support-links, .support-ticket, .profile-card) >
+  :where(summary, details, .micro, .button, .button-row, .field, .form) +
+  :where(p, details, .button, .text-button, .button-row, .field, .form),
+.daily-guests > .micro + .chips,
+.sheet > :where(.micro, .field, .button, .checkbox, .form) +
+  :where(.field, .chips, .form, .button, .button-row, .checkbox) {
+  margin-block-start: var(--control-gap);
+}
+.daily-guest > small {
+  display: block;
+  margin-block-start: 6px;
 }
