@@ -425,176 +425,183 @@ export function CalendarScreen() {
   };
   return (
     <>
-      <PageTitle
-        eyebrow="OUR SCHEDULE"
-        title="함께 뛰는 날"
-        description="코트에서 만날 다음 순간을 확인해요."
-        action={
-          boot.role === "admin" ? (
-            <Link
-              className="text-button"
-              href={link("/admin/more?day=" + selected) + "#schedule-settings"}
+      <div className="club-planner">
+        <div className="calendar card">
+          <div className="calendar-heading">
+            <h2>
+              <small>{year}년</small> {m}월
+            </h2>
+            <button
+              className="icon-button"
+              aria-label="이전 달"
+              onClick={() => change(-1)}
             >
-              일정 설정
-            </Link>
-          ) : null
-        }
-      />
-      <div className="calendar card">
-        <div className="calendar-heading">
-          <button
-            className="icon-button"
-            aria-label="이전 달"
-            onClick={() => change(-1)}
-          >
-            <ChevronLeft />
-          </button>
-          <h2>
-            {year}년 {m}월
-          </h2>
-          <button
-            className="icon-button"
-            aria-label="다음 달"
-            onClick={() => change(1)}
-          >
-            <ChevronRight />
-          </button>
-        </div>
-        <div className="calendar-grid weekdays">
-          {["일", "월", "화", "수", "목", "금", "토"].map((d) => (
-            <span key={d}>{d}</span>
-          ))}
-        </div>
-        <Resource resource={resource}>
-          {(events) => (
-            <div className="calendar-grid">
-              {Array.from({ length: first }, (_, i) => (
-                <span key={`empty-${i}`} />
-              ))}
-              {Array.from({ length: count }, (_, i) => {
-                const day = `${month}-${String(i + 1).padStart(2, "0")}`;
-                const e = days.get(day) || [];
-                const urgent = e.some(
-                  (v) => v.is_emergency || v.status === "cancelled",
-                );
-                const fills = Array.from(
-                  new Set(
-                    e.map((v) =>
-                      v.is_emergency || v.status === "cancelled"
-                        ? "#ffc6c6"
-                        : calendarFill(byKind.get(v.kind)?.color),
-                    ),
-                  ),
-                );
-
-                return (
-                  <button
-                    aria-label={`${day}${e.length ? `, 일정 ${e.length}개, ${e.map((v: ClubEvent) => (v.is_emergency || v.status === "cancelled" ? "긴급 변경" : byKind.get(v.kind)?.label || eventKinds[v.kind])).join(", ")}` : ""}`}
-                    aria-current={seoulDate() === day ? "date" : undefined}
-                    aria-pressed={selected === day}
-                    className={`${e.length ? "has-events" : ""} ${selected === day ? "selected" : ""} ${seoulDate() === day ? "today" : ""}`}
-                    key={day}
-                    onClick={() => setSelected(day)}
-                  >
-                    {fills.length > 0 && (
-                      <span className="day-fill" aria-hidden="true">
-                        {fills.map((color) => (
-                          <i key={color} style={{ background: color }} />
-                        ))}
-                      </span>
-                    )}
-                    <span className="date-number">{i + 1}</span>
-                    {urgent && (
-                      <small className="day-alert" aria-hidden="true">
-                        !
-                      </small>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </Resource>
-        <div className="calendar-legend">
-          {kinds
-            .filter((k) => !boot.archivedKinds?.includes(k.key))
-            .map((k) => (
-              <span key={k.key}>
-                <i
-                  className={k.key}
-                  style={{ background: calendarFill(k.color) }}
-                />
-                {k.label}
-              </span>
+              <ChevronLeft />
+            </button>
+            <button
+              className="icon-button"
+              aria-label="다음 달"
+              onClick={() => change(1)}
+            >
+              <ChevronRight />
+            </button>
+            {boot.role === "admin" && (
+              <Link
+                className="text-button planner-settings"
+                href={
+                  link("/admin/more?day=" + selected) + "#schedule-settings"
+                }
+              >
+                일정 설정
+              </Link>
+            )}
+          </div>
+          <div className="calendar-grid weekdays">
+            {["일", "월", "화", "수", "목", "금", "토"].map((d) => (
+              <span key={d}>{d}</span>
             ))}
-          <span>
-            <i className="cancelled" />
-            긴급 변경
-          </span>
+          </div>
+          <Resource resource={resource}>
+            {(events) => (
+              <div className="calendar-grid">
+                {Array.from({ length: first }, (_, i) => (
+                  <span key={`empty-${i}`} />
+                ))}
+                {Array.from({ length: count }, (_, i) => {
+                  const day = `${month}-${String(i + 1).padStart(2, "0")}`;
+                  const e = days.get(day) || [];
+                  const urgent = e.some(
+                    (v) => v.is_emergency || v.status === "cancelled",
+                  );
+                  const fills = Array.from(
+                    new Set(
+                      e.map((v) =>
+                        v.is_emergency || v.status === "cancelled"
+                          ? "#ffc6c6"
+                          : calendarFill(byKind.get(v.kind)?.color),
+                      ),
+                    ),
+                  );
+
+                  return (
+                    <button
+                      aria-label={`${day}${e.length ? `, 일정 ${e.length}개, ${e.map((v: ClubEvent) => (v.is_emergency || v.status === "cancelled" ? "긴급 변경" : byKind.get(v.kind)?.label || eventKinds[v.kind])).join(", ")}` : ""}`}
+                      aria-current={seoulDate() === day ? "date" : undefined}
+                      aria-pressed={selected === day}
+                      className={`${e.length ? "has-events" : ""} ${selected === day ? "selected" : ""} ${seoulDate() === day ? "today" : ""}`}
+                      key={day}
+                      onClick={() => setSelected(day)}
+                    >
+                      {fills.length > 0 && (
+                        <span className="day-fill" aria-hidden="true">
+                          {fills.map((color) => (
+                            <i key={color} style={{ background: color }} />
+                          ))}
+                        </span>
+                      )}
+                      <span className="date-number">{i + 1}</span>
+                      {urgent && (
+                        <small className="day-alert" aria-hidden="true">
+                          !
+                        </small>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </Resource>
+          <div className="calendar-legend">
+            {kinds
+              .filter((k) => !boot.archivedKinds?.includes(k.key))
+              .map((k) => (
+                <span key={k.key}>
+                  <i
+                    className={k.key}
+                    style={{ background: calendarFill(k.color) }}
+                  />
+                  {k.label}
+                </span>
+              ))}
+            <span>
+              <i className="cancelled" />
+              긴급 변경
+            </span>
+          </div>
+        </div>
+        <div className="planner-agenda">
+          <Resource resource={resource}>
+            {() => {
+              const dates = [...days.keys()]
+                .filter((day) => day > selected && day.startsWith(month))
+                .sort();
+              return [selected, ...dates].map((day) => (
+                <section key={day} className="agenda-group">
+                  <h3>
+                    {formatDate(day + "T12:00:00+09:00", {
+                      month: "long",
+                      day: "numeric",
+                      weekday: "long",
+                    })}
+                  </h3>
+                  {days.has(day) ? (
+                    days.get(day)!.map((e) => (
+                      <Link
+                        key={e.id}
+                        className={`agenda-row ${e.is_emergency || e.status === "cancelled" ? "urgent-event" : ""}`}
+                        href={link(
+                          (screen.startsWith("/admin") ? "/admin" : "") +
+                            "/events/" +
+                            e.id,
+                        )}
+                      >
+                        <span className="agenda-time">
+                          <strong>{formatTime(e.starts_at)}</strong>
+                          <small>{formatTime(e.ends_at)}</small>
+                        </span>
+                        <span
+                          className="agenda-body day-event-description"
+                          style={{
+                            borderColor:
+                              e.is_emergency || e.status === "cancelled"
+                                ? "var(--red)"
+                                : byKind.get(e.kind)?.color || "var(--gold)",
+                          }}
+                        >
+                          <small>
+                            {byKind.get(e.kind)?.label || eventKinds[e.kind]} ·{" "}
+                            {e.status === "cancelled"
+                              ? "취소"
+                              : e.status === "completed"
+                                ? "종료"
+                                : e.is_emergency
+                                  ? "긴급 변경"
+                                  : "운동 일정"}
+                          </small>
+                          <strong>{e.title}</strong>
+                          <span>{e.location}</span>
+                          {e.description && <span>{e.description}</span>}
+                          <Badge tone={canApplyAsGuest(e) ? "green" : ""}>
+                            {guestAvailability(e)}
+                          </Badge>
+                          {e.change_reason && (
+                            <span className="emergency-change">
+                              {e.change_reason}
+                            </span>
+                          )}
+                        </span>
+                        <ChevronRight size={16} />
+                      </Link>
+                    ))
+                  ) : (
+                    <p className="agenda-empty">등록된 일정이 없어요.</p>
+                  )}
+                </section>
+              ));
+            }}
+          </Resource>
         </div>
       </div>
-      <SectionTitle
-        title={`${Number(selected.slice(5, 7))}월 ${Number(selected.slice(8))}일 일정`}
-      />
-      <Resource resource={resource}>
-        {(events) => {
-          const day = events.filter(
-            (e: ClubEvent) => seoulDate(e.starts_at) === selected,
-          );
-          return day.length ? (
-            day.map((e: ClubEvent) => (
-              <Link
-                key={e.id}
-                className={`agenda-row ${e.is_emergency || e.status === "cancelled" ? "urgent-event" : ""}`}
-                href={link(
-                  (screen.startsWith("/admin") ? "/admin" : "") +
-                    "/events/" +
-                    e.id,
-                )}
-              >
-                <span className="agenda-time">
-                  <strong>{formatTime(e.starts_at)}</strong>
-                  <small>{formatTime(e.ends_at)}</small>
-                </span>
-                <span
-                  className="agenda-body day-event-description"
-                  style={{
-                    borderColor:
-                      e.is_emergency || e.status === "cancelled"
-                        ? "var(--red)"
-                        : byKind.get(e.kind)?.color || "var(--gold)",
-                  }}
-                >
-                  <small>
-                    {byKind.get(e.kind)?.label || eventKinds[e.kind]} ·{" "}
-                    {e.status === "cancelled"
-                      ? "취소"
-                      : e.status === "completed"
-                        ? "종료"
-                        : e.is_emergency
-                          ? "긴급 변경"
-                          : "운동 일정"}
-                  </small>
-                  <strong>{e.title}</strong>
-                  <span>{e.location}</span>
-                  {e.description && <span>{e.description}</span>}
-                  <Badge tone={canApplyAsGuest(e) ? "green" : ""}>
-                    {guestAvailability(e)}
-                  </Badge>
-                  {e.change_reason && (
-                    <span className="emergency-change">{e.change_reason}</span>
-                  )}
-                </span>
-                <ChevronRight size={16} />
-              </Link>
-            ))
-          ) : (
-            <Empty icon={CalendarDays} title="등록된 일정이 없어요">
-              다른 날짜를 선택해보세요.
-            </Empty>
-          );
-        }}
-      </Resource>
     </>
   );
 }

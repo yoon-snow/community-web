@@ -2644,3 +2644,36 @@ button.emergency { width: 100%; text-align: left; }
   --folder-warm: var(--card);
 }
 .app-shell.ops-shell .event-card.featured { background: #162b46; }
+
+.club-planner { background: var(--card); border: 1px solid var(--border); border-radius: 24px; overflow: hidden; }
+.club-planner .calendar.card { margin: 0; border: 0; padding: 18px 14px 10px; background: transparent; }
+.club-planner .calendar-heading { justify-content: flex-start; gap: 2px; }
+.club-planner .calendar-heading h2 { font-size: 24px; margin-inline-end: 6px; }
+.club-planner .calendar-heading h2 small { font-size: 14px; color: var(--secondary-ink); }
+.planner-settings { margin-inline-start: auto; }
+.club-planner .calendar-grid { gap: 1px; }
+.club-planner .calendar-grid button { min-height: 44px; background: transparent; color: var(--text); }
+.club-planner .calendar-grid .day-fill {
+  inset: 50% auto auto 50%; transform: translate(-50%,-50%); width: 34px; height: 34px;
+  border-radius: 13px; overflow: hidden;
+}
+.club-planner .day-fill::after { content: ""; position: absolute; inset: 3px; border-radius: 10px; background: var(--card); }
+.club-planner .calendar-grid button.selected { outline: none; }
+.club-planner .calendar-grid button.selected .date-number {
+  background: var(--text); color: var(--card); border-radius: 10px;
+  min-width: 28px; line-height: 28px;
+}
+.club-planner .calendar-grid button.today { box-shadow: none; }
+.club-planner .calendar-grid button:focus-visible { outline: 2px solid var(--text); outline-offset: -2px; }
+.club-planner .day-alert { right: 2px; top: 1px; border-radius: 50%; background: #ffc6c6; color: #781721; padding-inline: 3px; }
+.club-planner .calendar-legend { justify-content: flex-start; border: 0; margin-top: 6px; padding: 4px 2px; }
+.planner-agenda { border-top: 1px solid var(--border); border-radius: 24px 24px 0 0; padding: 12px 16px 18px; box-shadow: 0 -4px 14px rgb(15 31 61 / 5%); }
+.planner-agenda::before { content: ""; display: block; margin: 0 auto 20px; width: 30px; height: 3px; background: var(--border); border-radius: 3px; }
+.agenda-group + .agenda-group { margin-top: 20px; }
+.agenda-group h3 { font-size: 13px; color: var(--secondary-ink); margin: 0 0 4px; }
+.agenda-group .agenda-row { padding: 12px 0; border: 0; gap: 10px; }
+.agenda-group .agenda-row + .agenda-row { border-top: 1px solid var(--border); }
+.agenda-group .agenda-body { gap: 4px; }
+.agenda-empty { font-size: 13px; color: var(--secondary-ink); }
+.club-planner .calendar-grid button.has-events { color: var(--text); }
+.club-planner .calendar-grid button.selected { background: transparent; }
