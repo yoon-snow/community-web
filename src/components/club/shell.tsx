@@ -182,14 +182,12 @@ export default function ClubApp() {
       ? import("@/lib/club-preview").then(({ previewData }) =>
           previewData(params.get("role") || "guest"),
         )
-      : api("bootstrap").then(async (data) =>
-          data.role === "admin"
-            ? {
-                ...data,
-                archivedKinds: await api("admin/schedule-kind-archive"),
-              }
-            : data,
-        );
+      : api("bootstrap").then(async (data) => ({
+          ...data,
+          archivedKinds: data.scheduleKinds
+            ? await api("admin/schedule-kind-archive")
+            : [],
+        }));
     request
       .then((v) => {
         if (live) setBoot(v);
@@ -254,6 +252,17 @@ export default function ClubApp() {
     }
   }, [toast]);
   const mutate = async (path: string, data: any, method = "POST") => {
+    if (
+      preview &&
+      boot.role === "admin" &&
+      ["admin/schedule-kinds", "admin/schedule-kind-archive"].includes(path)
+    ) {
+      const { updatePreviewKind } = await import("@/lib/club-preview");
+      updatePreviewKind(method, data);
+      refresh();
+      setToast("이 탭의 미리보기에 반영했습니다.");
+      return { ok: true };
+    }
     if (preview)
       throw new Error("미리보기에서는 실제 데이터를 저장하지 않습니다.");
     if (offline) throw new Error("인터넷에 연결한 후 다시 시도해주세요.");

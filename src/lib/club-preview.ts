@@ -2,10 +2,46 @@ import {
   previewData as baseData,
   previewResource as baseResource,
 } from "./preview";
-import type { ClubRow } from "./domain";
+import { eventKinds, type ClubRow } from "./domain";
+const storageKey = "spotlight-demo-schedule-kinds";
+function previewKinds(): ClubRow[] {
+  const saved =
+    typeof window !== "undefined" && sessionStorage.getItem(storageKey);
+  if (saved) return JSON.parse(saved);
+  const colors: Record<string, string> = {
+    game: "#24477C",
+    lesson: "#B4881C",
+    match: "#007A78",
+    tournament: "#90529B",
+    social: "#B95631",
+    other: "#576779",
+    practice: "#52834B",
+    event: "#965680",
+    holiday: "#737373",
+  };
+  return Object.entries(eventKinds).map(([key, label]) => ({
+    key,
+    label,
+    color: colors[key],
+  }));
+}
+export function updatePreviewKind(method: string, data: ClubRow) {
+  const kinds = previewKinds();
+  if (method === "POST") kinds.push({ ...data, key: crypto.randomUUID() });
+  else {
+    const kind = kinds.find((k) => k.key === data.key);
+    if (!kind) throw new Error("종류를 찾을 수 없습니다.");
+    if (method === "DELETE") kind.archived = true;
+    else Object.assign(kind, { label: data.label, color: data.color });
+  }
+  sessionStorage.setItem(storageKey, JSON.stringify(kinds));
+}
 export function previewData(role: string) {
+  const scheduleKinds = previewKinds();
   return {
     ...baseData(role),
+    scheduleKinds,
+    archivedKinds: scheduleKinds.filter((k) => k.archived).map((k) => k.key),
     rules: [
       "회원",
       "게스트",

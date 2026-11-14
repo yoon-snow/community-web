@@ -499,11 +499,7 @@ export function CalendarScreen() {
         </Resource>
         <div className="calendar-legend">
           {kinds
-            .filter(
-              (k) =>
-                !boot.archivedKinds?.includes(k.key) ||
-                resource.data?.some((e: ClubEvent) => e.kind === k.key),
-            )
+            .filter((k) => !boot.archivedKinds?.includes(k.key))
             .map((k) => (
               <span key={k.key}>
                 <i className={k.key} style={{ background: k.color }} />
