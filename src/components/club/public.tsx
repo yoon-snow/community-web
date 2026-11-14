@@ -376,7 +376,7 @@ export function EventActions({ event }: { event: ClubEvent }) {
 }
 
 export function CalendarScreen() {
-  const { boot, link } = useApp();
+  const { boot, link, screen } = useApp();
   const [month, setMonth] = useState(seoulDate().slice(0, 7));
   const [selected, setSelected] = useState(seoulDate());
   const [editor, setEditor] = useState(false);
@@ -531,20 +531,50 @@ export function CalendarScreen() {
           );
           return day.length ? (
             day.map((e: ClubEvent) => (
-              <div key={e.id} className="selected-day-event">
-                <EventCard event={e} />
-                <div className="card day-event-description">
-                  <p>
-                    {e.description || "상세 안내는 일정 화면에서 확인해주세요."}
-                  </p>
+              <Link
+                key={e.id}
+                className={`agenda-row ${e.is_emergency || e.status === "cancelled" ? "urgent-event" : ""}`}
+                href={link(
+                  (screen.startsWith("/admin") ? "/admin" : "") +
+                    "/events/" +
+                    e.id,
+                )}
+              >
+                <span className="agenda-time">
+                  <strong>{formatTime(e.starts_at)}</strong>
+                  <small>{formatTime(e.ends_at)}</small>
+                </span>
+                <span
+                  className="agenda-body day-event-description"
+                  style={{
+                    borderColor:
+                      e.is_emergency || e.status === "cancelled"
+                        ? "var(--red)"
+                        : byKind.get(e.kind)?.color || "var(--gold)",
+                  }}
+                >
+                  <small>
+                    {byKind.get(e.kind)?.label || eventKinds[e.kind]} ·{" "}
+                    {e.status === "cancelled"
+                      ? "취소"
+                      : e.status === "completed"
+                        ? "종료"
+                        : e.is_emergency
+                          ? "긴급 변경"
+                          : "운동 일정"}
+                  </small>
+                  <strong>{e.title}</strong>
+                  <span>{e.location}</span>
+                  {e.description && <span>{e.description}</span>}
                   <Badge tone={canApplyAsGuest(e) ? "green" : ""}>
                     {guestAvailability(e)}
                   </Badge>
                   {e.change_reason && (
-                    <p className="emergency-change">{e.change_reason}</p>
+                    <span className="emergency-change">{e.change_reason}</span>
                   )}
-                </div>
-              </div>
+                </span>
+                <ChevronRight size={16} />
+              </Link>
             ))
           ) : (
             <Empty icon={CalendarDays} title="등록된 일정이 없어요">
@@ -676,7 +706,14 @@ export function NoticeCard({ notice }: { notice: ClubRow }) {
   return (
     <>
       <button className="notice-card" onClick={() => setOpen(true)}>
-        <span>
+        <span className="feed-meta">
+          <span className="feed-avatar" aria-hidden="true">
+            <Volleyball size={18} />
+          </span>
+          <span>
+            <b>SpotLight 운영진</b>
+            <small>{formatDate(notice.created_at)}</small>
+          </span>
           <Badge
             tone={
               notice.kind === "emergency"
@@ -693,19 +730,16 @@ export function NoticeCard({ notice }: { notice: ClubRow }) {
                   required: "필독",
                   emergency: "긴급",
                   event: "이벤트",
-                } as any
+                } as Record<string, string>
               )[notice.kind]
             }
           </Badge>
-          <strong>{notice.title}</strong>
-          <small>
-            {formatDate(notice.created_at, {
-              month: "numeric",
-              day: "numeric",
-            })}
-          </small>
         </span>
-        <ChevronRight size={18} />
+        <strong>{notice.title}</strong>
+        <span className="feed-excerpt">{notice.content}</span>
+        <span className="feed-open">
+          게시글 보기 <ChevronRight size={14} />
+        </span>
       </button>
       {open && <NoticeDialog notice={notice} close={() => setOpen(false)} />}
     </>
@@ -748,7 +782,7 @@ export function NoticesScreen() {
   const resource = useResource(`notices?kind=${kind}&page=${page}`);
   return (
     <>
-      <PageTitle eyebrow="CLUB NEWS" title="우리의 소식" />
+      <PageTitle eyebrow="CLUB NEWS" title="클럽 게시판" />
       <Chips
         value={kind}
         onChange={(v) => {

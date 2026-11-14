@@ -2580,3 +2580,43 @@ button.emergency { width: 100%; text-align: left; }
   display: block;
   margin-block-start: 6px;
 }
+
+/* Club folders use solid gradient stops so the surface stays legible in either theme. */
+:root {
+  --folder-surface: linear-gradient(120deg, #eff4fa, #dce7f3);
+  --folder-warm: linear-gradient(120deg, #faf4df, #f0e5c1);
+}
+[data-theme="dark"] {
+  --folder-surface: linear-gradient(120deg, #1d334f, #14243b);
+  --folder-warm: linear-gradient(120deg, #37342b, #262c36);
+}
+.app-shell :is(.card, .menu-list, .task-list, .stat, .participation, .notice-card, .board-list-row) { border-radius: 22px; }
+.app-shell .button { border-radius: 18px; }
+.app-shell .badge, .app-shell .chip { border-radius: 999px; }
+.app-shell :is(.event-card.featured, .stat) {
+  border: 0;
+  border-radius: 24px;
+  padding-top: 30px;
+  clip-path: polygon(0 0, 38% 0, 41% 7px, 100% 7px, 100% 100%, 0 100%);
+}
+.app-shell .event-card.featured { background: linear-gradient(120deg,#10203c,#213e60 72%,#344a5e); color: white; }
+.app-shell .stat { background: var(--folder-surface); }
+.app-shell .stat:nth-child(even) { background: var(--folder-warm); }
+.app-shell .task-list { background: var(--folder-surface); }
+.calendar-grid > button { border-radius: 50%; }
+.calendar-grid > button:is(.today,.selected) { border-radius: 18px; }
+.calendar.card { box-shadow: none; }
+.agenda-row { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:start; gap:14px; padding:18px 14px; border-block-start:1px solid var(--border); }
+.agenda-time,.agenda-body { display:grid; align-content:start; gap:6px; }
+.agenda-time { font-variant-numeric:tabular-nums; font-size:14px; }
+.agenda-body { border-inline-start:3px solid; padding-inline-start:14px; justify-items:start; overflow-wrap:anywhere; }
+.agenda-time small,.agenda-body small,.agenda-body > span:not(.badge) { color:var(--secondary-ink); font-size:12px; line-height:1.6; }
+.agenda-body strong { font-size:16px; }
+.app-shell .notice-card { display:grid; grid-template-columns:minmax(0,1fr); gap:10px; padding:18px; justify-items:start; }
+.notice-card > .feed-meta { width:100%; display:flex; flex-wrap:nowrap; gap:10px; }
+.feed-avatar { display:grid; place-items:center; width:34px; height:34px; border-radius:50%; background:var(--folder-surface); color:var(--text); }
+.feed-meta b { font-size:12px; }
+.feed-meta .badge { margin-inline-start:auto; }
+.notice-card > strong { font-size:16px; line-height:1.5; }
+.notice-card > .feed-excerpt { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; color:var(--secondary-ink); font-size:13px; line-height:1.65; overflow-wrap:anywhere; }
+.notice-card > .feed-open { border-top:1px solid var(--border); padding-top:10px; width:100%; justify-content:space-between; color:var(--secondary-ink); font-size:11px; }
