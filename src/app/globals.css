@@ -2620,3 +2620,9 @@ button.emergency { width: 100%; text-align: left; }
 .notice-card > strong { font-size:16px; line-height:1.5; }
 .notice-card > .feed-excerpt { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; color:var(--secondary-ink); font-size:13px; line-height:1.65; overflow-wrap:anywhere; }
 .notice-card > .feed-open { border-top:1px solid var(--border); padding-top:10px; width:100%; justify-content:space-between; color:var(--secondary-ink); font-size:11px; }
+
+.app-shell.ops-shell {
+  --folder-surface: var(--card);
+  --folder-warm: var(--card);
+}
+.app-shell.ops-shell .event-card.featured { background: #162b46; }

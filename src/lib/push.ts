@@ -1,3 +1,4 @@
+import { notificationText } from "@/lib/notification-text";
 import "server-only";
 import webpush from "web-push";
 import { serviceClient } from "./supabase/server";
@@ -75,8 +76,8 @@ export async function deliverPush() {
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
           JSON.stringify({
             id: n.id,
-            title: n.title,
-            body: n.body,
+            title: notificationText(n.title, "SpotLight 알림"),
+            body: notificationText(n.body, "앱에서 자세한 내용을 확인해주세요."),
             href: n.href,
           }),
           { TTL: 3600, timeout: 5000 },

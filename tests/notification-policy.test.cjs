@@ -163,6 +163,7 @@ test("Web Push delivery suppresses historical member operations and demoted/inac
       },
       "./supabase/server": { serviceClient: () => db },
       "./notification-policy": policy,
+      "@/lib/notification-text": load("src/lib/notification-text.ts"),
     },
     {
       VAPID_PUBLIC_KEY: "test",
@@ -184,4 +185,12 @@ test("Web Push delivery suppresses historical member operations and demoted/inac
           u.last_error === "recipient no longer eligible",
       ),
     );
+});
+
+test("Korean notification text survives delivery and damaged text has a readable fallback", () => {
+  const { notificationText } = load("src/lib/notification-text.ts");
+  const text = "새 게스트 신청이 도착했습니다 🏐";
+  assert.equal(notificationText(text, "알림"), text);
+  assert.equal(notificationText(Buffer.from(text).toString("latin1"), "알림"), text);
+  assert.equal(notificationText("�", "알림"), "알림");
 });

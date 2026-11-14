@@ -33,11 +33,18 @@ export function EventEditor({
   close: () => void;
 }) {
   const { mutate, boot } = useApp();
-  const kinds: ClubRow[] =
+  const kinds: ClubRow[] = (
     boot.scheduleKinds ||
-    Object.entries(eventKinds).map(([key, label]) => ({ key, label }));
+    Object.entries(eventKinds).map(([key, label]) => ({ key, label }))
+  ).filter(
+    (kind: ClubRow) =>
+      kind.key === event?.kind || !boot.archivedKinds?.includes(kind.key),
+  );
   const weekday = new Date(day + "T12:00:00Z").getUTCDay();
-  const regularKind = [1, 5].includes(weekday) ? "lesson" : "game";
+  const suggested = [1, 5].includes(weekday) ? "lesson" : "game";
+  const regularKind = kinds.some((k) => k.key === suggested)
+    ? suggested
+    : kinds[0]?.key || "";
   const labelFor = (key: string) =>
     kinds.find((k) => k.key === key)?.label || key;
   const defaultStart = day + "T" + (weekday === 0 ? "17:00" : "18:00");
@@ -128,6 +135,7 @@ export function EventEditor({
         <Field
           label="종류"
           name="kind"
+          required
           value={event?.kind ?? regularKind}
           onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
             if (event) return;

@@ -3,9 +3,11 @@ import { useState } from "react";
 import { Field, SaveForm, useApp } from "./core";
 import type { ClubRow } from "@/lib/domain";
 export function ScheduleTools({ kinds }: { kinds: ClubRow[] }) {
-  const { mutate, toast } = useApp();
+  const { mutate, toast, boot } = useApp();
   const [selected, setSelected] = useState("");
-  const item = kinds.find((k) => k.key === selected);
+  const [busy, setBusy] = useState(false);
+  const active = kinds.filter((k) => !boot.archivedKinds?.includes(k.key));
+  const item = active.find((k) => k.key === selected);
   return (
     <details className="card">
       <summary>정기운동 · 종류 관리</summary>
@@ -34,7 +36,7 @@ export function ScheduleTools({ kinds }: { kinds: ClubRow[] }) {
         }
       >
         <option value="">새 종류 추가</option>
-        {kinds.map((k) => (
+        {active.map((k) => (
           <option key={k.key} value={k.key}>
             {k.label}
           </option>
@@ -65,6 +67,37 @@ export function ScheduleTools({ kinds }: { kinds: ClubRow[] }) {
           value={item?.color || "#24477C"}
         />
       </SaveForm>
+      {item && (
+        <button
+          type="button"
+          className="button secondary full danger-text"
+          disabled={busy}
+          onClick={async () => {
+            if (
+              !window.confirm(
+                item.label +
+                  " 종류를 삭제할까요? 기존 일정은 유지되며 새 일정에서는 선택할 수 없습니다.",
+              )
+            )
+              return;
+            setBusy(true);
+            try {
+              await mutate(
+                "admin/schedule-kind-archive",
+                { key: item.key },
+                "DELETE",
+              );
+              setSelected("");
+            } catch (e) {
+              toast((e as Error).message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {busy ? "삭제 중…" : "선택한 종류 삭제"}
+        </button>
+      )}
     </details>
   );
 }

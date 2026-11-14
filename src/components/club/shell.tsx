@@ -182,7 +182,14 @@ export default function ClubApp() {
       ? import("@/lib/club-preview").then(({ previewData }) =>
           previewData(params.get("role") || "guest"),
         )
-      : api("bootstrap");
+      : api("bootstrap").then(async (data) =>
+          data.role === "admin"
+            ? {
+                ...data,
+                archivedKinds: await api("admin/schedule-kind-archive"),
+              }
+            : data,
+        );
     request
       .then((v) => {
         if (live) setBoot(v);

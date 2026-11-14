@@ -1,4 +1,5 @@
 "use client";
+import { notificationText } from "@/lib/notification-text";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState, useEffect, type FormEvent } from "react";
@@ -1381,8 +1382,8 @@ export function NotificationsScreen() {
                       <Bell size={20} />
                     </span>
                     <div>
-                      <strong>{n.title}</strong>
-                      <p>{n.body}</p>
+                      <strong>{notificationText(n.title, "SpotLight 알림")}</strong>
+                      <p>{notificationText(n.body, "앱에서 자세한 내용을 확인해주세요.")}</p>
                       <small>{formatDate(n.created_at)}</small>
                     </div>
                     {!n.read_at && <span className="unread-dot" />}

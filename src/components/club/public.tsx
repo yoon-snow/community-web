@@ -78,6 +78,18 @@ export function HomeScreen() {
   const me = useResource(boot.member ? "me" : null);
   return (
     <>
+      {!boot.member && (
+        <div className="greeting">
+          <p>PLAY TOGETHER, SHINE TOGETHER</p>
+          <h1>
+            우리의 배구가
+            <br />더 빛나는 곳<span className="gold">.</span>
+          </h1>
+          <span className="greeting-caption">
+            함께 뛰고, 함께 성장하는 SpotLight
+          </span>
+        </div>
+      )}
       <Emergency />
       {boot.member ? (
         <h1 className="member-hello">
@@ -156,22 +168,6 @@ export function HomeScreen() {
       )}
       <SupportLinks />
       {!boot.member && (
-        <div className="greeting">
-          <p>PLAY TOGETHER, SHINE TOGETHER</p>
-          <h1>
-            우리의 배구가
-            <br />더 빛나는 곳<span className="gold">.</span>
-          </h1>
-          <span className="greeting-caption">
-            함께 뛰고, 함께 성장하는 SpotLight
-          </span>
-        </div>
-      )}
-      <div className="club-wordmark">
-        <Volleyball size={18} />
-        <span>ONE TEAM. ONE SPOTLIGHT.</span>
-      </div>
-      {!boot.member && (
         <Link
           href={link(next ? `/events/${next.id}` : "/calendar")}
           className="guest-cta"
@@ -186,6 +182,10 @@ export function HomeScreen() {
           <ArrowRight size={19} />
         </Link>
       )}
+      <div className="club-wordmark">
+        <Volleyball size={18} />
+        <span>ONE TEAM. ONE SPOTLIGHT.</span>
+      </div>
     </>
   );
 }
@@ -509,12 +509,18 @@ export function CalendarScreen() {
           )}
         </Resource>
         <div className="calendar-legend">
-          {kinds.map((k) => (
-            <span key={k.key}>
-              <i className={k.key} style={{ background: k.color }} />
-              {k.label}
-            </span>
-          ))}
+          {kinds
+            .filter(
+              (k) =>
+                !boot.archivedKinds?.includes(k.key) ||
+                resource.data?.some((e: ClubEvent) => e.kind === k.key),
+            )
+            .map((k) => (
+              <span key={k.key}>
+                <i className={k.key} style={{ background: k.color }} />
+                {k.label}
+              </span>
+            ))}
           <span>
             <i className="cancelled" />
             긴급 변경
