@@ -366,6 +366,16 @@ export function EventActions({ event }: { event: ClubEvent }) {
   );
 }
 
+// Keep pale club colors intact and lift dark colors enough for navy date text.
+function calendarFill(color = "#8293a8") {
+  const rgb = [1, 3, 5].map((start) =>
+    parseInt(color.slice(start, start + 2), 16),
+  );
+  const light = rgb.map((v) => ((v / 255 + 0.055) / 1.055) ** 2.4);
+  const luminance = light[0] * 0.2126 + light[1] * 0.7152 + light[2] * 0.0722;
+  return luminance >= 0.42 ? color : `color-mix(in srgb, ${color} 45%, white)`;
+}
+
 export function CalendarScreen() {
   const { boot, link, screen } = useApp();
   const [month, setMonth] = useState(seoulDate().slice(0, 7));
@@ -464,33 +474,41 @@ export function CalendarScreen() {
               {Array.from({ length: count }, (_, i) => {
                 const day = `${month}-${String(i + 1).padStart(2, "0")}`;
                 const e = days.get(day) || [];
+                const urgent = e.some(
+                  (v) => v.is_emergency || v.status === "cancelled",
+                );
+                const fills = Array.from(
+                  new Set(
+                    e.map((v) =>
+                      v.is_emergency || v.status === "cancelled"
+                        ? "#ffc6c6"
+                        : calendarFill(byKind.get(v.kind)?.color),
+                    ),
+                  ),
+                );
+
                 return (
                   <button
                     aria-label={`${day}${e.length ? `, 일정 ${e.length}개, ${e.map((v: ClubEvent) => (v.is_emergency || v.status === "cancelled" ? "긴급 변경" : byKind.get(v.kind)?.label || eventKinds[v.kind])).join(", ")}` : ""}`}
                     aria-current={seoulDate() === day ? "date" : undefined}
                     aria-pressed={selected === day}
-                    className={`${selected === day ? "selected" : ""} ${seoulDate() === day ? "today" : ""}`}
+                    className={`${e.length ? "has-events" : ""} ${selected === day ? "selected" : ""} ${seoulDate() === day ? "today" : ""}`}
                     key={day}
                     onClick={() => setSelected(day)}
                   >
-                    <span>{i + 1}</span>
-                    <div className="calendar-dots">
-                      {e.slice(0, 3).map((v: ClubEvent) => (
-                        <i
-                          key={v.id}
-                          style={
-                            v.is_emergency || v.status === "cancelled"
-                              ? undefined
-                              : { background: byKind.get(v.kind)?.color }
-                          }
-                          className={
-                            v.status === "cancelled" || v.is_emergency
-                              ? "cancelled"
-                              : v.kind
-                          }
-                        />
-                      ))}
-                    </div>
+                    {fills.length > 0 && (
+                      <span className="day-fill" aria-hidden="true">
+                        {fills.map((color) => (
+                          <i key={color} style={{ background: color }} />
+                        ))}
+                      </span>
+                    )}
+                    <span className="date-number">{i + 1}</span>
+                    {urgent && (
+                      <small className="day-alert" aria-hidden="true">
+                        !
+                      </small>
+                    )}
                   </button>
                 );
               })}
@@ -502,7 +520,10 @@ export function CalendarScreen() {
             .filter((k) => !boot.archivedKinds?.includes(k.key))
             .map((k) => (
               <span key={k.key}>
-                <i className={k.key} style={{ background: k.color }} />
+                <i
+                  className={k.key}
+                  style={{ background: calendarFill(k.color) }}
+                />
                 {k.label}
               </span>
             ))}

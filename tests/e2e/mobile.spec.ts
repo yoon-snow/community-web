@@ -302,7 +302,7 @@ test("calendar date reveals details and emergency red marker; admin calendar kee
   page,
 }) => {
   await page.goto("/preview/calendar?role=guest");
-  await expect(page.locator(".calendar-dots .cancelled").first()).toBeVisible();
+  await expect(page.locator(".calendar-grid .day-alert").first()).toBeVisible();
   const heading = page.locator(".calendar-heading h2");
   const original = await heading.innerText();
   await page.getByRole("button", { name: "다음 달", exact: true }).click();
