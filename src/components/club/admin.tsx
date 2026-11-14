@@ -65,6 +65,7 @@ const NoticeEditor = dynamic(
 );
 
 import { OpsSwitch, useOpsScope } from "./ops-scope";
+import { HomeSchedule } from "./home-schedule";
 import { DailyGuests } from "./daily-guests";
 function ManagementLinks({ member }: { member: boolean }) {
   const scope = member ? "member" : "guest";
@@ -216,6 +217,7 @@ export function AdminHome() {
                     </Link>
                   ))}
               </div>
+              <HomeSchedule current={event} />
               {!member && <DailyGuests />}
               <SectionTitle
                 title={
