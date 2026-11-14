@@ -15,6 +15,7 @@ test("regular workout defaults follow selected Sunday and switching kinds update
     (d) => d && new Date(d + "T12:00:00Z").getUTCDay() === 0,
   )!;
   await page.getByRole("button", { name: new RegExp("^" + day) }).click();
+  await page.getByRole("link", { name: "일정 설정" }).click();
   await page.getByRole("button", { name: "일정 추가" }).click();
   await expect(page.getByLabel("시작 · 한국 시간")).toHaveValue(day + "T17:00");
   await expect(page.getByLabel("종료 · 한국 시간")).toHaveValue(day + "T20:00");

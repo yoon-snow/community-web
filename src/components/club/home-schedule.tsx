@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { CalendarDays, Plus } from "lucide-react";
 import { eventKinds, formatDate, type ClubEvent } from "@/lib/domain";
@@ -21,25 +22,33 @@ function EditHomeEvent({ id, close }: { id: string; close: () => void }) {
   );
 }
 
-export function HomeSchedule({ current }: { current?: ClubEvent }) {
+export function HomeSchedule() {
   const { boot } = useApp();
-  const [selection, setSelection] = useState("");
+  const params = useSearchParams();
+  const requested = params.get("event") || "";
+  const day = params.get("day") || undefined;
+  const [selection, setSelection] = useState(requested);
   const [editor, setEditor] = useState("");
   const events = new Map<string, ClubEvent>();
-  if (current) events.set(current.id, current);
+
   for (const event of boot.events as ClubEvent[])
     if (event.status !== "deleted") events.set(event.id, event);
-  const chosen = events.has(selection)
-    ? selection
-    : events.keys().next().value || "";
+  const chosen =
+    selection && (events.has(selection) || selection === requested)
+      ? selection
+      : events.keys().next().value || "";
   const kinds =
     boot.scheduleKinds ||
     Object.entries(eventKinds).map(([key, label]) => ({ key, label }));
   return (
     <>
-      <section className="card form" aria-label="일정 관리">
+      <section
+        id="schedule-settings"
+        className="card form"
+        aria-label="일정 및 종류 관리"
+      >
         <h2 style={{ margin: 0 }}>
-          <CalendarDays size={18} /> 일정 관리
+          <CalendarDays size={18} /> 일정 및 종류 관리
         </h2>
         <button className="button primary" onClick={() => setEditor("new")}>
           <Plus size={16} /> 일정 추가
@@ -54,6 +63,9 @@ export function HomeSchedule({ current }: { current?: ClubEvent }) {
                 setSelection(e.target.value)
               }
             >
+              {requested && !events.has(requested) && (
+                <option value={requested}>선택한 일정</option>
+              )}
               {Array.from(events.values())
                 .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
                 .map((event) => (
@@ -73,7 +85,10 @@ export function HomeSchedule({ current }: { current?: ClubEvent }) {
         <ScheduleTools kinds={kinds} />
       </section>
       {editor === "new" ? (
-        <EventEditor close={() => setEditor("")} />
+        <EventEditor
+          day={day && /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : undefined}
+          close={() => setEditor("")}
+        />
       ) : (
         editor && <EditHomeEvent id={editor} close={() => setEditor("")} />
       )}

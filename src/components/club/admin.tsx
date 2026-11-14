@@ -217,7 +217,6 @@ export function AdminHome() {
                     </Link>
                   ))}
               </div>
-              <HomeSchedule current={event} />
               {!member && <DailyGuests />}
               <SectionTitle
                 title={
@@ -1141,6 +1140,7 @@ export function AdminMore() {
       <OpsSwitch path="/admin/more" />
       <ManagementLinks member={member} />
       <SectionTitle title="공통 관리" />
+      <HomeSchedule />
       <Menu
         items={[
           {

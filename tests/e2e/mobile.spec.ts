@@ -325,6 +325,7 @@ test("calendar date reveals details and emergency red marker; admin calendar kee
       .getByRole("navigation", { name: "주 메뉴" })
       .getByRole("link", { name: "게스트", exact: true }),
   ).toBeVisible();
+  await page.getByRole("link", { name: "일정 설정" }).click();
   await page.getByRole("button", { name: "일정 추가" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.getByLabel("긴급 변경 · 캘린더에 빨간색으로 표시").check();
@@ -332,6 +333,7 @@ test("calendar date reveals details and emergency red marker; admin calendar kee
     page.getByRole("textbox", { name: /^긴급 변경 안내/ }),
   ).toBeVisible();
   await page.getByRole("button", { name: "닫기", exact: true }).click();
+  await page.goto("/preview/admin/calendar?role=admin");
   await page
     .locator('.calendar-grid button[aria-label*="긴급 변경"]')
     .first()
@@ -339,7 +341,10 @@ test("calendar date reveals details and emergency red marker; admin calendar kee
   await page.locator(".urgent-event").first().click();
   await expect(page).toHaveURL(/\/preview\/admin\/events\//);
   await expect(page.getByText("일정 종류", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "일정 수정", exact: true }).click();
+  await page.getByRole("link", { name: "일정 설정" }).click();
+  await page
+    .getByRole("button", { name: "선택한 일정 수정", exact: true })
+    .click();
   await expect(page.getByRole("dialog")).toContainText("운동 일정 수정");
   await expect(
     page.getByRole("textbox", { name: /^긴급 변경 안내/ }),

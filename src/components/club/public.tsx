@@ -12,7 +12,6 @@ import {
   ClipboardList,
   MapPin,
   Play,
-  Plus,
   Users,
   Volleyball,
   X,
@@ -54,14 +53,6 @@ import { GuestEtiquette, GuestNotices } from "./guest-notices";
 import { VideoCard } from "./video-card";
 import dynamic from "next/dynamic";
 import { Loader } from "./core";
-const ScheduleTools = dynamic(
-  () => import("./schedule-tools").then((m) => m.ScheduleTools),
-  { loading: Loader },
-);
-const EventEditor = dynamic(
-  () => import("./admin-forms").then((m) => m.EventEditor),
-  { loading: Loader },
-);
 const RuleForm = dynamic(
   () => import("./admin-forms").then((m) => m.RuleForm),
   { loading: Loader },
@@ -379,7 +370,6 @@ export function CalendarScreen() {
   const { boot, link, screen } = useApp();
   const [month, setMonth] = useState(seoulDate().slice(0, 7));
   const [selected, setSelected] = useState(seoulDate());
-  const [editor, setEditor] = useState(false);
   const bounds = monthBounds(month);
   const covered =
     boot.eventCoverage &&
@@ -431,13 +421,12 @@ export function CalendarScreen() {
         description="코트에서 만날 다음 순간을 확인해요."
         action={
           boot.role === "admin" ? (
-            <button
-              className="icon-button bordered"
-              aria-label="일정 추가"
-              onClick={() => setEditor(true)}
+            <Link
+              className="text-button"
+              href={link("/admin/more?day=" + selected) + "#schedule-settings"}
             >
-              <Plus />
-            </button>
+              일정 설정
+            </Link>
           ) : null
         }
       />
@@ -589,8 +578,6 @@ export function CalendarScreen() {
           );
         }}
       </Resource>
-      {boot.role === "admin" && <ScheduleTools kinds={kinds} />}
-      {editor && <EventEditor day={selected} close={() => setEditor(false)} />}
     </>
   );
 }
@@ -598,7 +585,6 @@ export function CalendarScreen() {
 export function EventScreen({ id }: { id: string }) {
   const { boot, link, screen } = useApp();
   const resource = useResource(`events/${id}`);
-  const [edit, setEdit] = useState(false);
   return (
     <>
       <Back
@@ -663,12 +649,12 @@ export function EventScreen({ id }: { id: string }) {
             )}
             {boot.role === "admin" && (
               <div className="button-row">
-                <button
+                <Link
                   className="button secondary"
-                  onClick={() => setEdit(true)}
+                  href={link("/admin/more?event=" + id) + "#schedule-settings"}
                 >
-                  일정 수정
-                </button>
+                  일정 설정
+                </Link>
                 <Link
                   className="button secondary"
                   href={link(`/admin/roster?event=${id}`)}
@@ -696,9 +682,6 @@ export function EventScreen({ id }: { id: string }) {
                   <Empty icon={Play} title="등록된 영상이 없어요" />
                 )}
               </>
-            )}
-            {edit && (
-              <EventEditor event={d.event} close={() => setEdit(false)} />
             )}
           </>
         )}
