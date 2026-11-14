@@ -2,13 +2,24 @@
 import { useState } from "react";
 import { useApp, useResource, Resource, SaveForm } from "./core";
 import { formatDate, type ClubRow } from "@/lib/domain";
-export function PostComments({ post }: { post: string }) {
+export function PostComments({
+  post,
+  parent,
+}: {
+  post: string;
+  parent?: string;
+}) {
   const { boot, mutate, toast } = useApp();
   const [page, setPage] = useState(0),
+    [expanded, setExpanded] = useState(""),
     [editing, setEditing] = useState(""),
     [draft, setDraft] = useState("");
   const path = "post-comments/" + post;
-  const comments = useResource(boot.member ? path + "?page=" + page : null);
+  const comments = useResource(
+    boot.member
+      ? path + "?page=" + page + (parent ? "&parent=" + parent : "")
+      : null,
+  );
   if (!boot.member)
     return (
       <p className="micro">
@@ -16,30 +27,36 @@ export function PostComments({ post }: { post: string }) {
       </p>
     );
   return (
-    <section className="post-comments">
-      <h3>댓글</h3>
+    <section className={parent ? "reply-thread" : "post-comments"}>
+      <h3>{parent ? "답글" : "댓글"}</h3>
       <SaveForm
-        submit="댓글 등록"
+        submit={parent ? "답글 등록" : "댓글 등록"}
         onSubmit={async () => {
-          await mutate(path, { body: draft });
+          await mutate(path, { body: draft, parent_id: parent });
           setPage(0);
           setDraft("");
         }}
       >
         <textarea
-          aria-label="댓글 내용"
+          aria-label={parent ? "답글 내용" : "댓글 내용"}
           required
           maxLength={1500}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder="댓글을 남겨주세요"
+          placeholder={
+            parent ? "이 댓글에 답글을 남겨주세요" : "댓글을 남겨주세요"
+          }
           rows={2}
         />
       </SaveForm>
       <Resource resource={comments}>
         {(d) => (
           <>
-            {!d.rows.length && <p className="micro">첫 댓글을 남겨보세요.</p>}
+            {!d.rows.length && (
+              <p className="micro">
+                {parent ? "첫 답글을 남겨보세요." : "첫 댓글을 남겨보세요."}
+              </p>
+            )}
             {d.rows.map((c: ClubRow) => (
               <article className="post-comment" key={c.id}>
                 <small>
@@ -73,6 +90,15 @@ export function PostComments({ post }: { post: string }) {
                   <p>{c.body}</p>
                 )}
                 <div className="button-row">
+                  {!parent && (
+                    <button
+                      className="text-button"
+                      aria-expanded={expanded === c.id}
+                      onClick={() => setExpanded(expanded === c.id ? "" : c.id)}
+                    >
+                      답글 보기 · 쓰기
+                    </button>
+                  )}
                   {c.mine && (
                     <button
                       className="text-button"
@@ -98,6 +124,9 @@ export function PostComments({ post }: { post: string }) {
                     </button>
                   )}
                 </div>
+                {!parent && expanded === c.id && (
+                  <PostComments key={c.id} post={post} parent={c.id} />
+                )}
               </article>
             ))}
             <div className="button-row">

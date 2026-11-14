@@ -522,6 +522,7 @@ export function ExportSheet({
   close: () => void;
 }) {
   const { boot } = useApp();
+  const [images, setImages] = useState<File[]>([]);
   const [format, setFormat] = useState("xlsx");
   const [filtered, setFiltered] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -535,13 +536,19 @@ export function ExportSheet({
         {[
           { value: "xlsx", label: "Excel (.xlsx)" },
           { value: "csv", label: "CSV (.csv)" },
+          ...(resource === "guests"
+            ? [{ value: "image", label: "공유 이미지 (.png)" }]
+            : []),
         ].map((i) => (
           <label key={i.value}>
             <input
               type="radio"
               value={i.value}
               checked={format === i.value}
-              onChange={() => setFormat(i.value)}
+              onChange={() => {
+                setFormat(i.value);
+                setImages([]);
+              }}
             />
             <Download size={22} />
             <strong>{i.label}</strong>
@@ -552,7 +559,10 @@ export function ExportSheet({
         <input
           type="checkbox"
           checked={filtered}
-          onChange={(e) => setFiltered(e.target.checked)}
+          onChange={(e) => {
+            setFiltered(e.target.checked);
+            setImages([]);
+          }}
         />
         <span>현재 필터 포함</span>
       </label>
@@ -568,6 +578,43 @@ export function ExportSheet({
           setBusy(true);
           setError("");
           try {
+            if (format === "image") {
+              const filters = filtered ? query : "";
+              let rows;
+              if (boot.preview) {
+                const { previewResource } = await import("@/lib/club-preview");
+                const params = new URLSearchParams(filters);
+                const month = params.get("month");
+                if (month) {
+                  params.set("from", month + "-01");
+                  params.set("to", month + "-31");
+                }
+                rows = previewResource("admin/guests?" + params, boot).rows.map(
+                  (g: ClubRow) => ({
+                    name: g.answers.name,
+                    position: g.answers.position,
+                  }),
+                );
+              } else {
+                const result = await fetch(
+                  "/api/club/admin/export?resource=guests&format=image&" +
+                    filters,
+                  { cache: "no-store" },
+                );
+                if (!result.ok) throw new Error("명단을 불러오지 못했어요.");
+                rows = await result.json();
+              }
+              if (!rows.length)
+                throw new Error("선택한 조건에 해당하는 신청이 없어요.");
+              if (rows.length > 500)
+                throw new Error(
+                  "이미지는 한 번에 500명까지 만들 수 있어요. 기간을 좁혀주세요.",
+                );
+              setImages(
+                await (await import("./guest-share-image")).guestImages(rows),
+              );
+              return;
+            }
             if (boot.preview)
               throw new Error(
                 "미리보기에는 실제 개인정보 파일을 생성하지 않습니다.",
@@ -591,6 +638,41 @@ export function ExportSheet({
       >
         {busy ? "파일 생성 중…" : "파일 생성"}
       </button>
+      {format === "image" && (
+        <p className="hint">
+          공유 이미지에는 이름과 희망 포지션만 표시합니다. 휴대폰 공유 메뉴에서
+          카카오톡과 임원진 채팅방을 선택하세요.
+        </p>
+      )}
+      {images.map((file, i) => (
+        <div className="button-row" key={file.name}>
+          <button
+            className="button secondary"
+            onClick={() => downloadBlob(file, file.name)}
+          >
+            이미지 저장 {i + 1}
+          </button>
+          <button
+            className="button secondary"
+            onClick={async () => {
+              try {
+                if (!navigator.canShare?.({ files: [file] })) {
+                  setError(
+                    "이 브라우저는 파일 공유를 지원하지 않아요. 이미지를 저장한 뒤 카카오톡에 첨부해주세요.",
+                  );
+                  return;
+                }
+                await navigator.share({ files: [file] });
+              } catch (e) {
+                if ((e as Error).name !== "AbortError")
+                  setError("공유하지 못했어요. 이미지 저장을 이용해주세요.");
+              }
+            }}
+          >
+            이미지 공유 {i + 1}
+          </button>
+        </div>
+      ))}
     </Modal>
   );
 }

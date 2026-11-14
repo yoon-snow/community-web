@@ -30,14 +30,16 @@ export function previewData(role: string) {
 export function previewResource(path: string, boot: ClubRow) {
   if (path.startsWith("post-comments/"))
     return {
-      rows: [
-        {
-          id: "demo-comment",
-          body: "안내 확인했습니다. 코트에서 만나요!",
-          mine: false,
-          created_at: new Date().toISOString(),
-        },
-      ],
+      rows: path.includes("&parent=")
+        ? []
+        : [
+            {
+              id: "demo-comment",
+              body: "안내 확인했습니다. 코트에서 만나요!",
+              mine: false,
+              created_at: new Date().toISOString(),
+            },
+          ],
       more: false,
     };
   return baseResource(path, boot);

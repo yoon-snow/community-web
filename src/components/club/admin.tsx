@@ -90,6 +90,8 @@ function ManagementLinks({ member }: { member: boolean }) {
                 icon: CheckCircle2,
               },
               { href: "/admin/dues", label: "회비 관리", icon: Wallet },
+              { href: "/admin/videos", label: "영상 관리", icon: Play },
+              { href: "/admin/uniforms", label: "유니폼 관리", icon: Shirt },
             ]
           : [
               {
@@ -143,7 +145,6 @@ export function AdminHome() {
         description={`${boot.member?.name || "운영진"}님, 오늘의 운영 현황이에요.`}
       />
       <OpsSwitch path="/admin" />
-      {!member && <DailyGuests />}
       <Resource resource={dashboard}>
         {(d) => {
           const event = d.event;
@@ -162,6 +163,60 @@ export function AdminHome() {
           ) as ClubEvent[];
           return (
             <>
+              <SectionTitle title="해야 할 일" />
+              <div className="task-list">
+                {[
+                  {
+                    href: "/admin/guests?status=pending",
+                    label: "게스트 입금확인",
+                    value: d.tasks.pending_guests,
+                    unit: "건",
+                    icon: Wallet,
+                  },
+                  {
+                    href: "/admin/members",
+                    label: "신규 회원가입",
+                    value: d.tasks.pending_members,
+                    unit: "건",
+                    icon: UserRound,
+                  },
+                  {
+                    href: "/admin/dues?status=unpaid",
+                    label: "이번 달 회비 미납",
+                    value: d.tasks.unpaid_members,
+                    unit: "명",
+                    icon: AlertCircle,
+                  },
+                  {
+                    href: event
+                      ? `/admin/attendance?event=${event.id}&response=unanswered`
+                      : "/admin/calendar",
+                    label: "회원 참석 미응답",
+                    value: d.tasks.unanswered,
+                    unit: "명",
+                    icon: CalendarDays,
+                  },
+                ]
+                  .filter((item) =>
+                    member
+                      ? !item.href.startsWith("/admin/guests")
+                      : item.href.startsWith("/admin/guests"),
+                  )
+                  .map((item, index) => (
+                    <Link href={link(item.href)} key={item.label}>
+                      <span className={`task-icon task-${index}`}>
+                        <item.icon size={18} />
+                      </span>
+                      <span>{item.label}</span>
+                      <Badge tone={item.value ? "gold" : "neutral"}>
+                        {item.value}
+                        {item.unit}
+                      </Badge>
+                      <ChevronRight size={17} />
+                    </Link>
+                  ))}
+              </div>
+              {!member && <DailyGuests />}
               <SectionTitle
                 title={
                   event && seoulDate(event.starts_at) === seoulDate()
@@ -243,79 +298,10 @@ export function AdminHome() {
               ) : (
                 <Empty icon={CalendarDays} title="예정된 운동이 없어요" />
               )}
-              <SectionTitle title="해야 할 일" />
-              <div className="task-list">
-                {[
-                  {
-                    href: "/admin/guests?status=pending",
-                    label: "게스트 입금확인",
-                    value: d.tasks.pending_guests,
-                    unit: "건",
-                    icon: Wallet,
-                  },
-                  {
-                    href: "/admin/members",
-                    label: "신규 회원가입",
-                    value: d.tasks.pending_members,
-                    unit: "건",
-                    icon: UserRound,
-                  },
-                  {
-                    href: "/admin/dues?status=unpaid",
-                    label: "이번 달 회비 미납",
-                    value: d.tasks.unpaid_members,
-                    unit: "명",
-                    icon: AlertCircle,
-                  },
-                  {
-                    href: event
-                      ? `/admin/attendance?event=${event.id}&response=unanswered`
-                      : "/admin/calendar",
-                    label: "회원 참석 미응답",
-                    value: d.tasks.unanswered,
-                    unit: "명",
-                    icon: CalendarDays,
-                  },
-                ]
-                  .filter((item) =>
-                    member
-                      ? !item.href.startsWith("/admin/guests")
-                      : item.href.startsWith("/admin/guests"),
-                  )
-                  .map((item, index) => (
-                    <Link href={link(item.href)} key={item.label}>
-                      <span className={`task-icon task-${index}`}>
-                        <item.icon size={18} />
-                      </span>
-                      <span>{item.label}</span>
-                      <Badge tone={item.value ? "gold" : "neutral"}>
-                        {item.value}
-                        {item.unit}
-                      </Badge>
-                      <ChevronRight size={17} />
-                    </Link>
-                  ))}
-              </div>
-              {!member && (
-                <>
-                  <SectionTitle
-                    title="최근 게스트 신청 5건"
-                    href="/admin/guests"
-                  />
-                  {d.recent_guests.length ? (
-                    d.recent_guests
-                      .slice(0, 5)
-                      .map((g: ClubRow) => <GuestCard key={g.id} guest={g} />)
-                  ) : (
-                    <Empty icon={Users} title="새 게스트 신청이 없어요" />
-                  )}
-                </>
-              )}
             </>
           );
         }}
       </Resource>
-      <ManagementLinks member={member} />
     </>
   );
 }
@@ -687,6 +673,25 @@ export function GuestCard({
   );
 }
 
+function MemberOverview() {
+  const dashboard = useResource("admin/dashboard");
+  return (
+    <Resource resource={dashboard}>
+      {(d) => (
+        <section aria-label="회원 운영 현황">
+          <SectionTitle title="회원 운영 현황" />
+          <Stats
+            items={[
+              { label: "가입 승인 대기", value: d.tasks.pending_members },
+              { label: "이번 달 회비 미납", value: d.tasks.unpaid_members },
+              { label: "운동 참석 미응답", value: d.tasks.unanswered },
+            ]}
+          />
+        </section>
+      )}
+    </Resource>
+  );
+}
 export function AdminMembers() {
   const memberId = useSearchParams().get("member");
   const selected = useResource(memberId ? "admin/member/" + memberId : null);
@@ -714,6 +719,8 @@ export function AdminMembers() {
           </button>
         }
       />
+      <MemberOverview />
+      <SectionTitle title="회원 관리" />
       <Resource resource={applications}>
         {(rows) =>
           rows.length ? (
@@ -981,7 +988,7 @@ export function MemberEditor({
   const { mutate, toast } = useApp();
   const detail = useResource(`admin/member/${m.id}`);
   const [titles, setTitles] = useState(m.admins?.titles?.join(", ") || "");
-  const [uploading, setUploading] = useState(false);
+
   return (
     <>
       <div className="profile-card">
@@ -1027,54 +1034,6 @@ export function MemberEditor({
           />
         )}
       </Resource>
-      <label className="button secondary full">
-        {uploading ? "사진 업로드 중…" : "회원 프로필 사진 변경"}
-        <input
-          type="file"
-          hidden
-          accept="image/png,image/jpeg,image/webp"
-          disabled={uploading}
-          onChange={async (e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            setUploading(true);
-            try {
-              if (file.size > 5242880)
-                throw new Error("5MB 이하의 사진을 선택해주세요.");
-              const content = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () =>
-                  resolve(String(reader.result).split(",")[1]);
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-              });
-              await mutate("admin/avatar", {
-                member_id: m.id,
-                content,
-                type: file.type,
-              });
-            } catch (e) {
-              toast((e as Error).message);
-            } finally {
-              setUploading(false);
-            }
-          }}
-        />
-      </label>
-      {detail.data?.avatar_path && (
-        <button
-          className="text-button danger-text"
-          onClick={async () => {
-            try {
-              await mutate("admin/avatar", { member_id: m.id }, "DELETE");
-            } catch (e) {
-              toast((e as Error).message);
-            }
-          }}
-        >
-          회원 프로필 사진 삭제
-        </button>
-      )}
       <SaveForm
         onSubmit={async (f) => {
           await mutate(
@@ -1179,26 +1138,9 @@ export function AdminMore() {
       <PageTitle eyebrow="OPERATIONS" title="더보기" />
       <OpsSwitch path="/admin/more" />
       <ManagementLinks member={member} />
-      <div className="card">
-        <h2>화면 미리보기</h2>
-        <div className="button-row">
-          <Link className="button secondary" href="/preview?role=guest">
-            비회원 화면
-          </Link>
-          <Link className="button secondary" href="/preview?role=member">
-            회원 화면
-          </Link>
-        </div>
-        <small>가상 데이터로 확인할 수 있습니다.</small>
-      </div>
+      <SectionTitle title="공통 관리" />
       <Menu
         items={[
-          ...(member
-            ? [
-                { href: "/admin/videos", label: "영상 관리", icon: Play },
-                { href: "/admin/uniforms", label: "유니폼 관리", icon: Shirt },
-              ]
-            : []),
           {
             href: "/admin/roster",
             label: "당일 참가자 명단 · 공유",
@@ -1223,6 +1165,18 @@ export function AdminMore() {
           { href: "/profile", label: "내 프로필", icon: UserRound },
         ]}
       />
+      <div className="card">
+        <h2>화면 미리보기</h2>
+        <div className="button-row">
+          <Link className="button secondary" href="/preview?role=guest">
+            비회원 화면
+          </Link>
+          <Link className="button secondary" href="/preview?role=member">
+            회원 화면
+          </Link>
+        </div>
+        <small>가상 데이터로 확인할 수 있습니다.</small>
+      </div>
     </>
   );
 }
@@ -1715,7 +1669,7 @@ export function AdminNotices() {
             : all;
           return rows.length ? (
             rows.map((n: ClubRow) => (
-              <div key={n.id}>
+              <div key={n.id} className="board-list-row">
                 <NoticeCard notice={n} />
                 <button className="text-button" onClick={() => setEdit(n)}>
                   수정
@@ -1821,6 +1775,16 @@ export function SettingsScreen() {
   return (
     <>
       <PageTitle title="신청 질문 · 운영 설정" />
+      <Menu
+        items={[
+          { href: "/admin/rules", label: "회원 회칙 관리", icon: BookOpen },
+          {
+            href: "/admin/guest-rules",
+            label: "게스트 규정 관리",
+            icon: BookOpen,
+          },
+        ]}
+      />
       <div className="card">
         <h2>서비스 연결 상태</h2>
         <div className="detail-line">

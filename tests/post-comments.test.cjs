@@ -26,6 +26,12 @@ test("comments enforce membership, notice visibility, ownership and moderation",
       "utf8",
     ).split("alter table public.inquiry_messages")[0];
     await db.exec(sql + "commit;");
+    await db.exec(
+      readFileSync(
+        "supabase/migrations/202611120017_comment_replies.sql",
+        "utf8",
+      ),
+    );
     for (const id of [member, other, admin])
       await db.query("insert into auth.users values($1)", [id]);
     await db.query(
@@ -50,6 +56,12 @@ test("comments enforce membership, notice visibility, ownership and moderation",
     const add =
       "insert into public.post_comments(post_id,body) values($1,'hello') returning id";
     const [{ id }] = await as(member, add, [post]);
+    const reply =
+      "insert into public.post_comments(post_id,parent_id,body) values($1,$2,'reply') returning id";
+    const [child] = await as(other, reply, [post, id]);
+    await assert.rejects(as(member, reply, [post, child.id]));
+    await assert.rejects(as(admin, reply, [hidden, id]));
+    await as(other, "delete from public.post_comments where id=$1", [child.id]);
     await assert.rejects(as(member, add, [hidden]));
     await assert.rejects(as(other, add, [post], false));
     assert.equal(

@@ -50,7 +50,7 @@ import {
 } from "./core";
 import { PostComments } from "./post-comments";
 import { SupportLinks } from "./support-links";
-import { GuestNotices } from "./guest-notices";
+import { GuestEtiquette, GuestNotices } from "./guest-notices";
 import { VideoCard } from "./video-card";
 import dynamic from "next/dynamic";
 import { Loader } from "./core";
@@ -553,12 +553,6 @@ export function CalendarScreen() {
           );
         }}
       </Resource>
-      {boot.member && (
-        <Link className="button secondary full" href={link("/rules")}>
-          <BookOpen size={17} />
-          클럽 회칙 보기
-        </Link>
-      )}
       {boot.role === "admin" && <ScheduleTools kinds={kinds} />}
       {editor && <EventEditor day={selected} close={() => setEditor(false)} />}
     </>
@@ -879,8 +873,9 @@ export function RulesScreen({
       <>
         <PageTitle
           eyebrow="CLUB HANDBOOK"
-          title={guestRules ? "게스트 규정 목차" : "SpotLight 회칙"}
+          title={guestRules ? "게스트 규정" : "SpotLight 회칙"}
         />
+        {guestRules && <GuestEtiquette />}
         <section className="card handbook-index" aria-label="회칙 목차">
           <h2>원본 회칙 목차</h2>
           <ol className="preview-rule-list">
@@ -911,6 +906,7 @@ export function RulesScreen({
           ) : null
         }
       />
+      {guestRules && <GuestEtiquette />}
       {articles.length ? (
         <>
           <nav className="handbook-index card" aria-label="회칙 목차">

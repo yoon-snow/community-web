@@ -1,26 +1,44 @@
 import type { ClubRow } from "@/lib/domain";
 import { Badge } from "./core";
 
+export function GuestEtiquette() {
+  return (
+    <details className="card prose guest-etiquette" open>
+      <summary>📢 게스트 이용 시 참고 사항</summary>
+      <ol>
+        <li>
+          네트 교체 시에는 개인 연습을 잠시 멈추고, 모두 함께 네트 교체에 협조해
+          주시면 감사하겠습니다.
+        </li>
+        <li>
+          코트 내에서는 원활한 진행을 위해 감독 및 코치의 안내에 따라주세요!
+        </li>
+        <li>
+          운동 분위기 및 운영에 영향을 주는 상황이 반복될 경우, 부득이하게 추후
+          게스트 참여에 제한이 있을 수 있는 점 양해 부탁드립니다.
+        </li>
+        <li>운동 종료 후에는 뒷정리도 함께 도와주세요!</li>
+        <li>
+          남녀가 번갈아 연습하는 경우, 한쪽이 연습할 때 다른 쪽은 볼 정리를
+          해주는게 운동 센스 🙂 !
+        </li>
+        <li>
+          동호회 운영 특성상 기존 회원분들 먼저 포지션이 배정될 수 있는 점 양해
+          부탁드립니다.
+        </li>
+      </ol>
+      <p>
+        체육관 오고 가실 때 안전에 유의해 주시고,
+        <br />
+        오늘도 즐겁게 운동할 수 있는 시간이 되길 바랍니다.
+      </p>
+    </details>
+  );
+}
 export function GuestNotices({ notices }: { notices: ClubRow[] }) {
   return (
     <>
-      <details className="card prose guest-etiquette" open>
-        <summary>게스트 이용 시 참고 사항</summary>
-        <ol>
-          <li>네트를 교체할 때는 개인 연습을 잠시 멈추고 함께 도와주세요.</li>
-          <li>
-            코트에서는 원활한 진행을 위해 감독과 코치의 안내를 따라주세요.
-          </li>
-          <li>
-            운동 분위기나 진행에 영향을 주는 상황이 반복되면 추후 게스트 참여가
-            제한될 수 있습니다.
-          </li>
-          <li>운동이 끝나면 뒷정리도 함께해주세요.</li>
-          <li>남녀가 번갈아 연습할 때는 쉬는 쪽에서 볼 정리를 도와주세요.</li>
-          <li>포지션은 기존 회원에게 먼저 배정될 수 있습니다.</li>
-        </ol>
-        <p>체육관 오가는 길 안전에 유의하시고, 즐겁게 운동하세요!</p>
-      </details>
+      <GuestEtiquette />
       {notices.length ? (
         notices.map((n: ClubRow) => (
           <details

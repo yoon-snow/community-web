@@ -35,12 +35,18 @@ async function handle(request: Request, ctx: Context) {
         .min(0)
         .max(10000)
         .parse(url.searchParams.get("page") || 0);
+      const parent = url.searchParams.get("parent");
+      const list = table
+        .select("id,body,author_id,created_at")
+        .eq("post_id", post);
       const rows =
         checked(
-          await table
-            .select("id,body,author_id,created_at")
-            .eq("post_id", post)
-            .order("created_at", { ascending: false })
+          await (
+            parent
+              ? list.eq("parent_id", uuid.parse(parent))
+              : list.is("parent_id", null)
+          )
+            .order("created_at", { ascending: Boolean(parent) })
             .order("id")
             .range(page * 20, page * 20 + 20),
         ) || [];
@@ -56,6 +62,7 @@ async function handle(request: Request, ctx: Context) {
       checked(
         await table.insert({
           post_id: post,
+          parent_id: data.parent_id == null ? null : uuid.parse(data.parent_id),
           body: cleanText(1500).min(1).parse(data.body),
         }),
       );
