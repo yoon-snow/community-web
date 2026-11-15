@@ -123,11 +123,40 @@ async function handle(req: Request, ctx: Ctx) {
     await throttle(db, req, "receipt", 30);
     const input = z
       .object({
-        id: z.union([uuid,z.string().regex(/^\d{8}$/)]),
+        id: z.union([uuid, z.string().regex(/^\d{8}$/)]).optional(),
         proof: z.string().max(64).optional(),
         phone: z.string().max(20).optional(),
       })
       .parse(await req.json());
+    if (input.id === undefined) {
+      const phone = normalizePhone(input.phone || "");
+      if (!/^01[016789]\d{7,8}$/.test(phone))
+        throw new HttpError(
+          400,
+          "신청할 때 입력한 휴대전화번호를 확인해주세요.",
+        );
+      const rows = data(
+        await db
+          .from("guest_applications")
+          .select("events(title,starts_at,status),guest_payments(status)")
+          .eq("answers->>phone", phone)
+          .order("submitted_at", { ascending: false })
+          .limit(10),
+      );
+      return {
+        applications: (rows ?? [])
+          .map((row) => {
+            const event = Array.isArray(row.events)
+              ? row.events[0]
+              : row.events;
+            const payment = Array.isArray(row.guest_payments)
+              ? row.guest_payments[0]
+              : row.guest_payments;
+            return { event, paid: payment?.status === "paid" };
+          })
+          .filter((row) => row.event),
+      };
+    }
     const signed = Boolean(input.proof && validReceipt(input.id, input.proof));
     const phone = normalizePhone(input.phone || "");
     const missing = () =>

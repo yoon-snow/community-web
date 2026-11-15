@@ -2677,3 +2677,13 @@ button.emergency { width: 100%; text-align: left; }
 .agenda-empty { font-size: 13px; color: var(--secondary-ink); }
 .club-planner .calendar-grid button.has-events { color: var(--text); }
 .club-planner .calendar-grid button.selected { background: transparent; }
+
+.guest-home-actions > a { flex: 1; }
+.receipt-results { display: grid; gap: 12px; }
+.receipt-state { border-inline-start: 5px solid var(--receipt-accent); }
+.receipt-state.paid { --receipt-accent: #299469; --receipt-label: #125a3c; --receipt-bg: #d8f4e6; }
+.receipt-state.pending { --receipt-accent: #c78821; --receipt-label: #684509; --receipt-bg: #ffedc5; }
+.receipt-status { display: inline-flex; align-items: center; gap: 6px; border-radius: 10px; padding: 7px 11px; background: var(--receipt-bg); color: var(--receipt-label); }
+.receipt-status svg { width: 18px; height: 18px; }
+.receipt-state h2 { font-size: 18px; margin: 14px 0 6px; }
+.receipt-state p { margin: 0 0 6px; }

@@ -1,89 +1,95 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
+import { CheckCircle2, Clock } from "lucide-react";
 import { api, useApp, Field, SaveForm, PageTitle } from "./core";
-import { formatDate, formatTime, type ClubRow } from "@/lib/domain";
+import {
+  formatDate,
+  formatTime,
+  normalizePhone,
+  type ClubRow,
+} from "@/lib/domain";
 
 export function ReceiptScreen() {
   const { boot, link } = useApp();
-  const [saved] = useState(() => {
-    try {
-      return JSON.parse(
-        sessionStorage.getItem("spot-support-application") || "null",
-      );
-    } catch {
-      return null;
-    }
-  });
-  const [result, setResult] = useState<ClubRow | null>(null);
+  const [applications, setApplications] = useState<ClubRow[] | null>(null);
   return (
     <>
       <PageTitle
         title="내 게스트 신청 확인"
-        description="접수번호와 신청할 때 입력한 연락처로 입금 확인 상태를 조회하세요."
+        description="신청할 때 입력한 휴대전화번호로 최근 신청 10건의 입금 상태를 확인하세요."
       />
       <SaveForm
-        submit="신청 상태 확인"
-        onSubmit={async (f) => {
-          setResult(null);
+        submit="신청 확인"
+        onSubmit={async (form) => {
+          setApplications(null);
+          const phone = normalizePhone(String(form.get("phone") || ""));
+          if (!/^01[016789]\d{7,8}$/.test(phone))
+            throw new Error("휴대전화번호를 확인해주세요.");
           if (boot.preview) {
-            setResult({
-              receipt: "미리보기",
-              event: boot.events[0],
-              payment: { status: "pending", amount: 5000 },
-              self_reported_paid: true,
-            });
+            setApplications(
+              phone === "01000000000"
+                ? boot.events
+                    .slice(0, 2)
+                    .map((event: ClubRow, i: number) => ({
+                      event,
+                      paid: i === 1,
+                    }))
+                : [],
+            );
             return;
           }
-          const id = String(f.get("id")).trim();
-          setResult(
-            await api("/api/support/receipt", {
-              method: "POST",
-              body: JSON.stringify({
-                id,
-                phone: f.get("phone"),
-                proof: id === saved?.id ? saved.proof : undefined,
-              }),
-            }),
-          );
+          const result = await api("/api/support/receipt", {
+            method: "POST",
+            body: JSON.stringify({ phone }),
+          });
+          setApplications(result.applications);
         }}
       >
-        <Field
-          label="접수번호"
-          name="id"
-          value={boot.preview ? "미리보기" : saved?.receiptNumber || saved?.id}
-          required
-        />
         <Field
           label="신청 연락처"
           type="tel"
           name="phone"
-          value={boot.preview ? "010-0000-0000" : saved?.phone}
+          autoComplete="tel"
+          placeholder="010-0000-0000"
+          value={boot.preview ? "010-0000-0000" : undefined}
           required
         />
       </SaveForm>
-      {result && (
-        <section className="card prose" role="status">
-          <h2>신청 접수 완료</h2>
-          <p>
-            {result.event.title} · {formatDate(result.event.starts_at)}{" "}
-            {formatTime(result.event.starts_at)}
-          </p>
-          <p>
-            {result.event.location}
-            {result.event.status === "cancelled" ? " · 운동 취소" : ""}
-          </p>
-          <strong>
-            {result.payment?.status === "paid" ? "입금완료" : "입금확인 전"}
-          </strong>
-          <p>
-            신청 당시 입금 응답 ·{" "}
-            {result.self_reported_paid
-              ? "입금했습니다"
-              : "아직 입금하지 않았습니다"}
-          </p>
+      {applications && (
+        <section className="receipt-results" aria-live="polite">
+          {applications.length === 0 && (
+            <p className="card">
+              이 번호로 접수된 신청이 없습니다. 신청 당시 연락처를 확인해주세요.
+            </p>
+          )}
+          {applications.map(({ event, paid }, i) => (
+            <article
+              className={"card receipt-state " + (paid ? "paid" : "pending")}
+              key={i}
+            >
+              <strong className="receipt-status">
+                {paid ? (
+                  <CheckCircle2 aria-hidden="true" />
+                ) : (
+                  <Clock aria-hidden="true" />
+                )}
+                {paid ? "입금완료" : "입금확인 전"}
+              </strong>
+              <h2>{event.title}</h2>
+              <p>
+                {formatDate(event.starts_at)} · {formatTime(event.starts_at)}
+                {event.status === "cancelled" && " · 운동 취소"}
+              </p>
+              <small>
+                {paid
+                  ? "운영진이 입금을 확인했습니다."
+                  : "운영진의 입금 확인을 기다리고 있습니다."}
+              </small>
+            </article>
+          ))}
           <Link
-            className="text-button"
+            className="button secondary full"
             href={link("/support?category=payment")}
           >
             입금 관련 문의

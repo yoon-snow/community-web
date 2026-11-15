@@ -72,9 +72,17 @@ export function HomeScreen() {
   return (
     <>
       {!boot.member && (
-        <Link href={link("/apply")} className="button primary full">
-          <Users size={19} /> 게스트 신청하기 <ArrowRight size={18} />
-        </Link>
+        <nav
+          className="button-row guest-home-actions"
+          aria-label="게스트 신청 메뉴"
+        >
+          <Link href={link("/apply")} className="button primary">
+            게스트 신청하기
+          </Link>
+          <Link href={link("/receipt")} className="button secondary">
+            신청 확인
+          </Link>
+        </nav>
       )}
       {!boot.member && (
         <div className="greeting">
