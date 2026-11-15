@@ -38,7 +38,10 @@ export function GuestEtiquette() {
 export function GuestNotices({ notices }: { notices: ClubRow[] }) {
   return (
     <>
-      <GuestEtiquette />
+      {!notices.some(
+        (n) =>
+          String(n.title).replace(/[^가-힣]/g, "") === "게스트이용시참고사항",
+      ) && <GuestEtiquette />}
       {notices.length ? (
         notices.map((n: ClubRow) => (
           <details

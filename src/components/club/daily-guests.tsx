@@ -18,7 +18,7 @@ export function DailyGuests() {
     <section className="daily-guests">
       <h2>오늘 · 다음 운동 게스트</h2>
       <p className="micro">
-        신청 이름·생년월일·희망 포지션·경력 / 현재 한국 날짜 기준 만 19세 이상은
+        신청 이름·생년월일·희망 포지션·경력 / 올해 19세가 되는 출생연도까지는
         성인으로 표시합니다.
       </p>
       <Chips

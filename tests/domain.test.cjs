@@ -316,14 +316,16 @@ test("guest availability excludes cancelled, completed and holiday events while 
     guest_fee: 5000,
     status: "scheduled",
   };
-  assert.equal(d.canApplyAsGuest(base), true);
+  const today = new Date("2098-12-18T12:00:00Z");
+  assert.equal(d.canApplyAsGuest(base,today), true);
+  assert.equal(d.canApplyAsGuest({...base,starts_at:"2099-01-02T01:00:00Z"},today),false);
   for (const patch of [
     { kind: "holiday" },
     { status: "cancelled" },
     { status: "completed" },
     { guests_open: false },
   ])
-    assert.equal(d.canApplyAsGuest({ ...base, ...patch }), false);
+    assert.equal(d.canApplyAsGuest({ ...base, ...patch },today), false);
   assert.equal(
     d.eventSchema.safeParse({ ...base, is_emergency: true, change_reason: "" })
       .success,
@@ -415,9 +417,9 @@ test("Import normalizes explicit calendar dates and blocks identity collisions w
   );
 });
 
-test("guest age filter treats 19th birthday as adult and keeps missing/invalid dates separate", () => {
+test("guest age filter uses the birth year and keeps missing/invalid dates separate", () => {
   assert.equal(d.guestAgeGroup("2007-11-06", "2026-11-06"), "adult");
-  assert.equal(d.guestAgeGroup("2007-11-07", "2026-11-06"), "minor");
+  assert.equal(d.guestAgeGroup("2007-12-31", "2026-11-06"), "adult");
   assert.equal(d.guestAgeGroup("2026-02-30", "2026-11-06"), "unknown");
   assert.equal(d.guestAgeGroup("2027-01-01", "2026-11-06"), "unknown");
   assert.equal(d.guestAgeGroup(null, "2026-11-06"), "unknown");

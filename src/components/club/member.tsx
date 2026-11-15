@@ -32,6 +32,7 @@ import {
   formatTime,
   noticeVersions,
   positions,
+  guestPositions,
   formatDate,
   seoulDate,
   type ClubRow,
@@ -181,6 +182,8 @@ export function ApplicationForm({
         next[key] = fd.has(key);
     if (fd.has("paid_answer"))
       next.self_reported_paid = fd.get("paid_answer") === "yes";
+    if (!membership && step === 1)
+      next.position = fd.getAll("position").join(", ");
     setValues(next);
     return next;
   };
@@ -189,6 +192,10 @@ export function ApplicationForm({
     setError("");
     if (!form.current?.reportValidity()) return;
     const latest = readForm();
+    if (!membership && step === 1 && !latest.position) {
+      setError("희망 포지션을 하나 이상 선택해주세요.");
+      return;
+    }
     if (!membership && step >= 3 && !guidance.data) {
       setError("참가 안내를 불러온 후 다시 시도해주세요.");
       return;
@@ -243,6 +250,7 @@ export function ApplicationForm({
             "spot-support-application",
             JSON.stringify({
               id: result.receipt,
+              receiptNumber: result.receipt_number,
               proof: result.support_proof,
               name: latest.name,
               phone: latest.phone,
@@ -253,7 +261,7 @@ export function ApplicationForm({
           /* Manual entry remains available. */
         }
       }
-      setReceipt(result.receipt || result.id);
+      setReceipt(result.receipt_number || result.receipt || result.id);
       setConfirmation(result);
     } catch (e) {
       setError((e as Error).message);
@@ -351,7 +359,10 @@ export function ApplicationForm({
             <p>
               <strong>입금자명: {confirmation.depositor_name}</strong>
               <br />
-              신청자 이름으로 입금해주세요. 이름이 다르면 운영진에게 알려주세요.
+              <small className="micro">
+                신청자 이름으로 입금해주세요. 이름이 다르면 운영진에게
+                알려주세요.
+              </small>
             </p>
             <button
               type="button"
@@ -378,6 +389,44 @@ export function ApplicationForm({
         <div className="card">
           <small>접수 번호</small>
           <code>{receipt}</code>
+          {!membership && (
+            <div className="button-row">
+              {["복사", "공유하기"].map((action) => (
+                <button
+                  key={action}
+                  type="button"
+                  className="button secondary"
+                  onClick={async () => {
+                    try {
+                      if (action === "공유하기" && navigator.share)
+                        await navigator.share({
+                          title: "SpotLight 게스트 신청",
+                          text: "접수번호 " + receipt,
+                          url: new URL("/receipt", location.origin).href,
+                        });
+                      else {
+                        await navigator.clipboard.writeText(
+                          action === "복사"
+                            ? receipt
+                            : "SpotLight 접수번호 " +
+                                receipt +
+                                " " +
+                                location.origin +
+                                "/receipt",
+                        );
+                        toast("복사했습니다.");
+                      }
+                    } catch (e) {
+                      if ((e as Error).name !== "AbortError")
+                        toast("접수번호를 길게 눌러 복사해주세요.");
+                    }
+                  }}
+                >
+                  {action}
+                </button>
+              ))}
+            </div>
+          )}
           <p className="micro">
             접수 번호를 저장해주세요. 확인이 필요하면 운영진에게 알려주세요.
           </p>
@@ -407,7 +456,7 @@ export function ApplicationForm({
         description={`${step + 1} / 5 · ${membership ? "함께할 준비를 시작해요" : "계정 없이 편하게 신청하세요"}`}
       />
       {!membership && step === 0 && (
-        <Link className="text-button" href={link("/receipt")}>
+        <Link className="button secondary full" href={link("/receipt")}>
           이미 신청하셨나요? 내 신청 조회
         </Link>
       )}
@@ -452,7 +501,7 @@ export function ApplicationForm({
               hint={
                 membership
                   ? hint("birth_date")
-                  : "게스트는 신청일 기준 만 19세 이상만 신청할 수 있습니다."
+                  : `올해는 ${Number(seoulDate().slice(0, 4)) - 19}년생까지 신청할 수 있습니다.`
               }
               name="birth_date"
               type="date"
@@ -461,8 +510,7 @@ export function ApplicationForm({
               max={
                 membership
                   ? seoulDate()
-                  : String(Number(seoulDate().slice(0, 4)) - 19) +
-                    seoulDate().slice(4)
+                  : String(Number(seoulDate().slice(0, 4)) - 19) + "-12-31"
               }
             />
             <Field
@@ -473,7 +521,10 @@ export function ApplicationForm({
               required
             >
               <option value="">선택해주세요</option>
-              {["여성", "남성", "기타", "응답하지 않음"].map((v) => (
+              {(membership
+                ? ["여성", "남성", "기타", "응답하지 않음"]
+                : ["남성", "여성"]
+              ).map((v) => (
                 <option key={v}>{v}</option>
               ))}
             </Field>
@@ -492,18 +543,35 @@ export function ApplicationForm({
         )}
         {step === 1 && (
           <>
-            <Field
-              label={label("position", "희망 포지션")}
-              hint={hint("position")}
-              name="position"
-              value={values.position}
-              required
-            >
-              <option value="">선택해주세요</option>
-              {positions.map((p) => (
-                <option key={p}>{p}</option>
-              ))}
-            </Field>
+            {membership ? (
+              <Field
+                label={label("position", "희망 포지션")}
+                hint={hint("position")}
+                name="position"
+                value={values.position}
+                required
+              >
+                <option value="">선택해주세요</option>
+                {positions.map((p) => (
+                  <option key={p}>{p}</option>
+                ))}
+              </Field>
+            ) : (
+              <fieldset className="card form">
+                <legend>희망 포지션 (복수 선택)</legend>
+                {guestPositions.map((p) => (
+                  <label key={p} className="checkbox">
+                    <input
+                      type="checkbox"
+                      name="position"
+                      value={p}
+                      defaultChecked={values.position.split(", ").includes(p)}
+                    />
+                    {p}
+                  </label>
+                ))}
+              </fieldset>
+            )}
             <Field
               label={label("experience", "배구 경력")}
               hint={hint("experience")}
@@ -596,7 +664,7 @@ export function ApplicationForm({
             <>
               <Field
                 label={label("event_id", "참여할 운동")}
-                hint={hint("event_id")}
+                hint="오늘부터 2주 후까지의 운동을 선택할 수 있습니다."
                 name="event_id"
                 value={values.event_id}
                 required
@@ -606,8 +674,11 @@ export function ApplicationForm({
                   .filter((e: ClubEvent) => canApplyAsGuest(e))
                   .map((e: ClubEvent) => (
                     <option value={e.id} key={e.id}>
-                      {formatDate(e.starts_at)} · {eventKinds[e.kind]} ·{" "}
-                      {e.guest_fee.toLocaleString()}원
+                      {formatDate(e.starts_at)} ·{" "}
+                      {boot.scheduleKinds?.find(
+                        (k: ClubRow) => k.key === e.kind,
+                      )?.label || eventKinds[e.kind]}{" "}
+                      · {e.guest_fee.toLocaleString()}원
                     </option>
                   ))}
               </Field>
@@ -779,7 +850,7 @@ export function ApplicationForm({
               </button>
             </div>
             <div className="card">
-              <p className="hint">
+              <p className="micro">
                 신청자 이름 <strong>{values.name}</strong>으로 입금해주세요.
               </p>
               <div className="detail-line">
@@ -1382,8 +1453,15 @@ export function NotificationsScreen() {
                       <Bell size={20} />
                     </span>
                     <div>
-                      <strong>{notificationText(n.title, "SpotLight 알림")}</strong>
-                      <p>{notificationText(n.body, "앱에서 자세한 내용을 확인해주세요.")}</p>
+                      <strong>
+                        {notificationText(n.title, "SpotLight 알림")}
+                      </strong>
+                      <p>
+                        {notificationText(
+                          n.body,
+                          "앱에서 자세한 내용을 확인해주세요.",
+                        )}
+                      </p>
                       <small>{formatDate(n.created_at)}</small>
                     </div>
                     {!n.read_at && <span className="unread-dot" />}

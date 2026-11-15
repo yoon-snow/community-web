@@ -123,7 +123,7 @@ async function handle(req: Request, ctx: Ctx) {
     await throttle(db, req, "receipt", 30);
     const input = z
       .object({
-        id: uuid,
+        id: z.union([uuid,z.string().regex(/^\d{8}$/)]),
         proof: z.string().max(64).optional(),
         phone: z.string().max(20).optional(),
       })
@@ -139,7 +139,7 @@ async function handle(req: Request, ctx: Ctx) {
         .select(
           "id,submitted_at,self_reported_paid,answers,events(title,starts_at,ends_at,location,status),guest_payments(status,amount)",
         )
-        .eq("id", input.id)
+        .eq(/^\d{8}$/.test(input.id) ? "receipt_number" : "id", input.id)
         .maybeSingle(),
     );
     if (
@@ -148,7 +148,7 @@ async function handle(req: Request, ctx: Ctx) {
     )
       throw missing();
     return {
-      receipt: app.id,
+      receipt: input.id,
       submitted_at: app.submitted_at,
       self_reported_paid: app.self_reported_paid,
       event: Array.isArray(app.events) ? app.events[0] : app.events,

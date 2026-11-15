@@ -114,10 +114,13 @@ test("guest links require matching token and ticket, and cannot reach admin or m
 test("receipt lookup matches submission phone and returns only the receipt summary", async () => {
   const id="55555555-5555-4555-8555-555555555555";
   const row={id,answers:{name:"비공개",phone:"01012345678"},self_reported_paid:true,events:{title:"게임데이"},guest_payments:[{status:"pending",amount:5000}]};
-  const db={rpc:async()=>({data:true}),from:()=>({select:()=>({eq:(_,value)=>({maybeSingle:async()=>({data:value===id?row:null})})})})};
+  const number="10000001";
+  const db={rpc:async()=>({data:true}),from:()=>({select:()=>({eq:(key,value)=>({maybeSingle:async()=>({data:(key==="id" && value===id) || (key==="receipt_number" && value===number) ? row:null})})})})};
   const handler=route({},db);
-  const call=(phone)=>handler.POST(new Request("https://club.example/api/support/receipt",{method:"POST",headers:{Origin:"https://club.example","Content-Type":"application/json"},body:JSON.stringify({id,phone})}),{params:Promise.resolve({path:["receipt"]})});
+  const call=(phone,code=id)=>handler.POST(new Request("https://club.example/api/support/receipt",{method:"POST",headers:{Origin:"https://club.example","Content-Type":"application/json"},body:JSON.stringify({id:code,phone})}),{params:Promise.resolve({path:["receipt"]})});
   assert.equal((await call("01011112222")).status,404);
+  assert.equal((await call("01011112222",number)).status,404);
+  assert.equal((await call("01012345678",number)).status,200);
   const response=await call("010-1234-5678");
   assert.equal(response.status,200);
   const result=await response.json();

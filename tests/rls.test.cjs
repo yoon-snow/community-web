@@ -1258,8 +1258,10 @@ test("atomic guest receipt returns only submitted event/payment; repeat phone li
     "event",
     "payment",
     "receipt",
+    "receipt_number",
     "self_reported_paid",
   ]);
+  assert.match(first.receipt_number,/^[0-9]{8}$/);
   assert.equal(first.payment.status, "pending");
   assert.equal(first.self_reported_paid, true);
   const firstApp = (

@@ -8,6 +8,17 @@ export const positions = [
   "수비",
   "미정",
 ];
+export const guestPositions = [
+  "레프트/라이트",
+  "앞차/백차",
+  "속공수",
+  "센터백",
+  "수비수",
+  "세터",
+  "미정",
+];
+export const guestCalendarKind = (kind: string) =>
+  !["practice", "event", "holiday"].includes(kind);
 export const eventKinds: Record<string, string> = {
   practice: "일반 운동",
   lesson: "레슨데이",
@@ -108,14 +119,16 @@ export function guestAgeGroup(
     birth > today
   )
     return "unknown";
-  const age =
-    Number(today.slice(0, 4)) -
-    Number(birth.slice(0, 4)) -
-    (today.slice(5) < birth.slice(5) ? 1 : 0);
+  const age = Number(today.slice(0, 4)) - Number(birth.slice(0, 4));
   return age >= 19 ? "adult" : "minor";
 }
 export const guestSchema = applicationSchema
   .extend({
+    gender: z.enum(["남성", "여성"]),
+    position: cleanText(80).refine(
+      (v) => v.split(", ").every((p) => guestPositions.includes(p)),
+      "희망 포지션을 선택해주세요.",
+    ),
     event_id: uuid,
     notice_consent: z.literal(true),
     question_versions: z.record(uuid, z.number().int().positive()),
@@ -125,7 +138,7 @@ export const guestSchema = applicationSchema
   })
   .refine(
     (v) => guestAgeGroup(v.birth_date) === "adult",
-    "게스트 신청은 신청일 기준 만 19세 이상만 가능합니다.",
+    "올해 19세가 되는 출생연도부터 신청할 수 있습니다.",
   );
 export const membershipSchema = applicationSchema
   .extend({
@@ -340,7 +353,9 @@ export function canApplyAsGuest(event: ClubEvent, now = new Date()): boolean {
   return (
     event.guests_open &&
     event.status === "scheduled" &&
-    event.kind !== "holiday" &&
+    guestCalendarKind(event.kind) &&
+    seoulDate(event.starts_at) <=
+      seoulDate(new Date(now.getTime() + 14 * 86400000)) &&
     new Date(event.starts_at) > now
   );
 }
@@ -351,7 +366,11 @@ export function guestAvailability(event: ClubEvent): string {
       ? "휴무"
       : event.status === "completed" || new Date(event.starts_at) <= new Date()
         ? "신청 마감"
-        : event.guests_open
-          ? "게스트 신청 가능"
-          : "게스트 신청 불가";
+        : event.guests_open &&
+            guestCalendarKind(event.kind) &&
+            !canApplyAsGuest(event)
+          ? "2주 전부터 신청 가능"
+          : event.guests_open && guestCalendarKind(event.kind)
+            ? "게스트 신청 가능"
+            : "게스트 신청 불가";
 }

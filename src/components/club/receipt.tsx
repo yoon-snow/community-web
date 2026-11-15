@@ -51,7 +51,7 @@ export function ReceiptScreen() {
         <Field
           label="접수번호"
           name="id"
-          value={boot.preview ? "미리보기" : saved?.id}
+          value={boot.preview ? "미리보기" : saved?.receiptNumber || saved?.id}
           required
         />
         <Field

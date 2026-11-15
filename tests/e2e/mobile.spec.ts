@@ -30,25 +30,18 @@ test("guest preview: calendar, event, 5-step application preserves answers and c
 }) => {
   await page.goto("/preview?role=guest");
   await expect(page.getByText("미리보기 · 가상 데이터")).toBeVisible();
-  await page
-    .getByRole("link", { name: "SpotLight와 함께 뛰어볼까요?" })
-    .click();
-  await page.getByRole("link", { name: "공지 확인하고 게스트 신청" }).click();
-  await expect(
-    page.getByRole("heading", { name: "참가 전 꼭 확인해주세요" }),
-  ).toBeVisible();
-  await page.getByLabel("운동 일정과 공지·필독사항을 확인했습니다.").check();
-  await page.getByRole("link", { name: "게스트 신청 시작" }).click();
+  await page.getByRole("link",{name:"게스트 신청하기",exact:true}).click();
   await expect(page.getByRole("heading", { name: "기본 정보" })).toBeVisible();
   await page.getByLabel("이름").fill("테스트");
   await page.getByLabel("생년월일").fill("1998-01-01");
   await page.getByLabel("성별").selectOption("여성");
   await page.getByLabel("연락처").fill("01012345678");
   await page.getByRole("button", { name: "다음", exact: true }).click();
-  await page.getByLabel("희망 포지션").selectOption("세터");
+  await page.getByLabel("세터",{exact:true}).check();
+  await page.getByLabel("속공수",{exact:true}).check();
   await page.getByLabel("배구 경력").fill("2년");
   await page.getByRole("button", { name: "다음", exact: true }).click();
-  await expect(page.getByLabel("참여할 운동")).not.toHaveValue("");
+  await page.getByLabel("참여할 운동").selectOption({index:1});
   await page.getByRole("button", { name: "이전", exact: true }).click();
   await expect(page.getByLabel("배구 경력")).toHaveValue("2년");
   await page.getByRole("button", { name: "다음", exact: true }).click();
@@ -410,6 +403,7 @@ test("changed notices require renewed consent and the submitted receipt carries 
       status: 201,
       json: {
         receipt: "confirmed-notices",
+        receipt_number: "10000123",
         event,
         payment: { amount: event.guest_fee, status: "pending" },
         bank: original.bank,
@@ -424,7 +418,8 @@ test("changed notices require renewed consent and the submitted receipt carries 
   await page.getByLabel("성별").selectOption("여성");
   await page.getByLabel("연락처").fill("01012345678");
   await page.getByRole("button", { name: "다음", exact: true }).click();
-  await page.getByLabel("희망 포지션").selectOption("세터");
+  await page.getByLabel("세터",{exact:true}).check();
+  await page.getByLabel("속공수",{exact:true}).check();
   await page.getByLabel("배구 경력").fill("2년");
   await page.getByRole("button", { name: "다음", exact: true }).click();
   await page.getByRole("button", { name: "다음", exact: true }).click();
@@ -450,7 +445,7 @@ test("changed notices require renewed consent and the submitted receipt carries 
   ).toBeVisible();
   expect(submitted).toHaveLength(0);
   await expect(
-    page.getByLabel("게스트 참가 규정·회칙을 확인하고 동의합니다. (필수)"),
+    page.getByLabel("운동 일정과 참가 안내를 확인하고 동의합니다. (필수)"),
   ).not.toBeChecked();
   for (const checkbox of await page.getByRole("checkbox").all())
     await checkbox.check();
@@ -460,6 +455,9 @@ test("changed notices require renewed consent and the submitted receipt carries 
     page.getByRole("heading", { name: "게스트 신청 완료", exact: true }),
   ).toBeVisible();
   expect(submitted).toHaveLength(1);
+  expect((submitted[0] as any).position.split(", ")).toEqual(expect.arrayContaining(["속공수", "세터"]));
+  await expect(page.getByText("10000123",{exact:true})).toBeVisible();
+  await expect(page.getByRole("button",{name:"공유하기",exact:true})).toBeVisible();
   expect(submitted[0].announcement_versions[notice.id]).toBe(2);
   expect((submitted[0] as any).notice_consent).toBe(true);
   expect(Object.keys((submitted[0] as any).question_versions)).toHaveLength(15);

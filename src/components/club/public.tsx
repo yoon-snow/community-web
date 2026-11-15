@@ -22,6 +22,7 @@ import {
 import {
   monthBounds,
   eventKinds,
+  guestCalendarKind,
   sortAnnouncements,
   canApplyAsGuest,
   guestAvailability,
@@ -62,6 +63,7 @@ export function HomeScreen() {
   const { boot, link } = useApp();
   const next = boot.events.find(
     (e: ClubEvent) =>
+      (boot.member || guestCalendarKind(e.kind)) &&
       new Date(e.starts_at) > new Date() &&
       e.status === "scheduled" &&
       e.kind !== "holiday",
@@ -69,6 +71,11 @@ export function HomeScreen() {
   const me = useResource(boot.member ? "me" : null);
   return (
     <>
+      {!boot.member && (
+        <Link href={link("/apply")} className="button primary full">
+          <Users size={19} /> 게스트 신청하기 <ArrowRight size={18} />
+        </Link>
+      )}
       {!boot.member && (
         <div className="greeting">
           <p>PLAY TOGETHER, SHINE TOGETHER</p>
@@ -158,21 +165,6 @@ export function HomeScreen() {
         <Empty icon={ClipboardList} title="새로운 소식을 준비 중이에요" />
       )}
       <SupportLinks />
-      {!boot.member && (
-        <Link
-          href={link(next ? `/events/${next.id}` : "/calendar")}
-          className="guest-cta"
-        >
-          <span className="circle-icon">
-            <Users />
-          </span>
-          <span>
-            <strong>SpotLight와 함께 뛰어볼까요?</strong>
-            <small>회원가입 없이 게스트 신청하기</small>
-          </span>
-          <ArrowRight size={19} />
-        </Link>
-      )}
       <div className="club-wordmark">
         <Volleyball size={18} />
         <span>ONE TEAM. ONE SPOTLIGHT.</span>
@@ -402,13 +394,14 @@ export function CalendarScreen() {
   const days = useMemo(() => {
     const groups = new Map<string, ClubEvent[]>();
     for (const event of resource.data || []) {
+      if (!boot.member && !guestCalendarKind(event.kind)) continue;
       const day = seoulDate(event.starts_at);
       const group = groups.get(day);
       if (group) group.push(event);
       else groups.set(day, [event]);
     }
     return groups;
-  }, [resource.data]);
+  }, [resource.data, boot.member]);
   const kinds: ClubRow[] =
     boot.scheduleKinds ||
     Object.entries(eventKinds).map(([key, label]) => ({ key, label }));
@@ -513,7 +506,11 @@ export function CalendarScreen() {
           </Resource>
           <div className="calendar-legend">
             {kinds
-              .filter((k) => !boot.archivedKinds?.includes(k.key))
+              .filter(
+                (k) =>
+                  !boot.archivedKinds?.includes(k.key) &&
+                  (boot.member || guestCalendarKind(k.key)),
+              )
               .map((k) => (
                 <span key={k.key}>
                   <i
@@ -645,10 +642,11 @@ export function EventScreen({ id }: { id: string }) {
                   {guestAvailability(d.event)}
                 </Badge>
               </div>
-              <p>
-                {d.event.description ||
-                  "편안한 운동복과 실내 운동화를 준비해주세요."}
-              </p>
+              {d.event.description &&
+                d.event.description.trim() !==
+                  "편안한 운동복과 실내 운동화를 준비해주세요." && (
+                  <p>{d.event.description}</p>
+                )}
               <div className="divider" />
               <div className="detail-line">
                 <span>게스트 참가비</span>
