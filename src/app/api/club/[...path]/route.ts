@@ -1069,6 +1069,36 @@ async function processRequest(request: Request, segments: string[]) {
     );
     return json({ ok: true });
   }
+  if (path === "admin/dues-unregistered" && method === "GET") {
+    const month = url.searchParams.get("month") || seoulDate().slice(0, 7);
+    const { end } = monthBounds(month);
+    const member = url.searchParams.get("member");
+    const page = z.coerce.number().int().min(0).max(10000).parse(url.searchParams.get("page") || 0);
+    let query = db.from("members")
+      .select("id,name,position,membership_payments(id)", { count: "exact" })
+      .eq("status", "active").lt("joined_on", seoulDate(end))
+      .eq("membership_payments.month", month + "-01").is("membership_payments", null)
+      .order("name").order("id");
+    if (member) query = query.eq("id", uuid.parse(member));
+    const result = await query.range(page * 30, page * 30 + 29);
+    return json({ rows: checked(result), total: result.count });
+  }
+  if (path === "admin/dues" && method === "PATCH") {
+    const input = z.object({member_id: uuid, month: dateOnly.refine(v => v.endsWith("-01")),
+      previous: z.enum(["unregistered","unpaid","paid"]), paid: z.boolean()}).parse(data);
+    const status = input.paid ? "paid" : "unpaid";
+    if(input.previous === "unregistered") {
+      const result = await db.from("membership_payments").insert({ member_id: input.member_id, month: input.month,
+        amount: 60000, status, verified_by: who.user!.id });
+      if(result.error?.code === "23505") throw new HttpError(409,"회비 상태가 변경됐어요. 새로고침 후 확인해주세요.");
+      checked(result);
+    } else {
+      const updated = checked(await db.from("membership_payments").update({status,verified_by:who.user!.id})
+        .eq("member_id",input.member_id).eq("month",input.month).eq("status",input.previous).select("id").maybeSingle());
+      if (!updated) throw new HttpError(409,"회비 상태가 변경됐어요. 새로고침 후 확인해주세요.");
+    }
+    return json({ok:true});
+  }
   if (path === "admin/dues" && method === "GET") {
     const month = z
       .string()

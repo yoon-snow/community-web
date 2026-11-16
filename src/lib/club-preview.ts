@@ -85,7 +85,31 @@ export function updateDemoVoteOrPin(path: string, data: ClubRow) {
       String(data.pinned),
     );
 }
+const duesKey = "spotlight-demo-monthly-dues";
+export function saveDemoDues(data: ClubRow) {
+  const rows: ClubRow[] = JSON.parse(sessionStorage.getItem(duesKey) || "[]");
+  const prior = rows.find(
+    (p) => p.member_id === data.member_id && p.month === data.month,
+  );
+  const value = {
+    ...prior,
+    member_id: data.member_id,
+    month: data.month,
+    status: data.status || (data.paid ? "paid" : "unpaid"),
+    amount: data.amount ?? prior?.amount ?? 60000,
+  };
+  sessionStorage.setItem(
+    duesKey,
+    JSON.stringify([...rows.filter((p) => p !== prior), value]),
+  );
+}
 export function previewResource(path: string, boot: ClubRow) {
+  if (typeof window !== "undefined")
+    boot = {
+      ...boot,
+      demoDues: JSON.parse(sessionStorage.getItem(duesKey) || "[]"),
+    };
+
   if (
     (path.startsWith("member-votes/") || path.startsWith("events/")) &&
     boot.member
@@ -126,7 +150,10 @@ export function previewResource(path: string, boot: ClubRow) {
       more: false,
     };
   if (path === "admin/notices" || path.startsWith("notices?")) {
-    const announcements = boot.announcements.map((n: ClubRow) => ({ ...n, pinned: demoSetting("pin", n.id) === "true" }));
+    const announcements = boot.announcements.map((n: ClubRow) => ({
+      ...n,
+      pinned: demoSetting("pin", n.id) === "true",
+    }));
     return baseResource(path, { ...boot, announcements });
   }
   return baseResource(path, boot);

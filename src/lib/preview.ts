@@ -324,7 +324,7 @@ export function previewResource(path: string, boot: ClubRow): any {
       ).length,
     })),
   });
-  const allDues = payments.flatMap((p: ClubRow) =>
+  const allDues: ClubRow[] = payments.flatMap((p: ClubRow) =>
     members.map((m, i) => ({
       ...p,
       id: `${p.id}-${m.id}`,
@@ -333,6 +333,21 @@ export function previewResource(path: string, boot: ClubRow): any {
       status: ["unpaid", "paid", "exempt"][i % 3],
     })),
   );
+  for (const change of boot.demoDues || []) {
+    const m = members.find((row) => row.id === change.member_id);
+    if (!m) continue;
+    const previous = allDues.find(
+      (row) => row.member_id === m.id && row.month === change.month,
+    );
+    if (previous) Object.assign(previous, change);
+    else allDues.push({ ...change, id: m.id + change.month, members: m });
+    if (m.id === member.id) {
+      const prior = payments.find((row) => row.month === change.month);
+      if (prior) Object.assign(prior, change);
+      else payments.push({ ...change, id: m.id + change.month, members: m });
+      payments.sort((a, b) => b.month.localeCompare(a.month));
+    }
+  }
   const scopedDues = allDues.filter(
     (p: ClubRow) =>
       p.month.startsWith(query.get("month") || seoulDate().slice(0, 7)) &&
@@ -412,13 +427,20 @@ export function previewResource(path: string, boot: ClubRow): any {
       recent_guests: guestRows.slice(0, 5),
     };
   }
+  const missingDues = members.filter(
+    (m) =>
+      (!query.get("member") || m.id === query.get("member")) &&
+      !scopedDues.some((p) => p.member_id === m.id),
+  );
+  if (path.startsWith("admin/dues-unregistered"))
+    return { rows: missingDues, total: missingDues.length };
   if (path.startsWith("admin/dues-summary"))
     return {
       registered: scopedDues.length,
       paid: scopedDues.filter((p: ClubRow) => p.status === "paid").length,
       unpaid: scopedDues.filter((p: ClubRow) => p.status === "unpaid").length,
       exempt: scopedDues.filter((p: ClubRow) => p.status === "exempt").length,
-      unregistered: 0,
+      unregistered: missingDues.length,
     };
   if (path.startsWith("guest-guidance")) {
     const params = new URL(path, "https://preview.invalid/").searchParams;
@@ -504,7 +526,9 @@ export function previewResource(path: string, boot: ClubRow): any {
             .map((a: ClubRow) => a.events.starts_at)
             .sort()
             .at(-1) || null,
-        current_month_payment: payments[0] || null,
+        current_month_payment:
+          payments.find((p) => p.month.startsWith(seoulDate().slice(0, 7))) ||
+          null,
       },
       attendance,
       payments,

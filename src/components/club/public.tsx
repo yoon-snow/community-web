@@ -60,7 +60,7 @@ const RuleForm = dynamic(
 );
 
 function MemberWelcome() {
-  const { boot, link, installApp } = useApp();
+  const { boot, link, installApp, installed } = useApp();
   const [open, setOpen] = useState(false);
   const key =
     "spotlight-member-welcome-" +
@@ -98,8 +98,12 @@ function MemberWelcome() {
           Safari 공유 메뉴에서 ‘홈 화면에 추가’를 누른 뒤 설치한 앱을
           열어주세요.
         </p>
-        <button className="button secondary full" onClick={installApp}>
-          홈 화면에 앱 설치
+        <button
+          className="button secondary full"
+          onClick={installApp}
+          disabled={installed}
+        >
+          {installed ? "앱 설치됨" : "홈 화면에 앱 설치"}
         </button>
         <p>운동 변경과 긴급공지를 받으려면 알림 설정에서 Push를 켜주세요.</p>
         <Link
@@ -115,7 +119,7 @@ function MemberWelcome() {
 }
 
 export function HomeScreen() {
-  const { boot, link } = useApp();
+  const { boot, link, installed, installApp } = useApp();
   const next = boot.events.find(
     (e: ClubEvent) =>
       (boot.member || guestCalendarKind(e.kind)) &&
@@ -220,6 +224,11 @@ export function HomeScreen() {
           </Resource>
         </>
       ) : null}
+      {boot.member && !installed && (
+        <button className="button secondary full" onClick={installApp}>
+          홈 화면에 앱 설치
+        </button>
+      )}
       <SectionTitle title="클럽 소식" href="/notices" />
       {boot.announcements.length ? (
         sortAnnouncements(boot.announcements as ClubRow[])

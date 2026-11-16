@@ -22,7 +22,7 @@ export default function RootLayout({
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem("spotlight-theme");document.documentElement.dataset.theme=t==="light"||t==="dark"?t:matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}catch{}`,
+            __html: `window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();window.spotlightInstallPrompt=e});window.addEventListener("appinstalled",function(){delete window.spotlightInstallPrompt});try{var t=localStorage.getItem("spotlight-theme");document.documentElement.dataset.theme=t==="light"||t==="dark"?t:matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}catch{}`,
           }}
         />
       </head>

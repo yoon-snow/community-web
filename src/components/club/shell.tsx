@@ -21,7 +21,15 @@ import {
 
 import { ResetPasswordScreen } from "./auth";
 
-import { api, Loader, Empty, ErrorBoxStandalone, Brand, Context } from "./core";
+import {
+  api,
+  Loader,
+  Empty,
+  ErrorBoxStandalone,
+  Brand,
+  Context,
+  Modal,
+} from "./core";
 import {
   HomeScreen,
   CalendarScreen,
@@ -167,7 +175,9 @@ export default function ClubApp() {
   const [revision, setRevision] = useState(0);
   const [toast, setToast] = useState("");
   const [offline, setOffline] = useState(false);
-  const [install, setInstall] = useState<any>(null);
+  const [installed, setInstalled] = useState(false);
+  const [installHelp, setInstallHelp] = useState("");
+
   const screen =
     (preview ? pathname.replace(/^\/preview/, "") : pathname) || "/";
   const adminScreen = screen.startsWith("/admin");
@@ -204,17 +214,27 @@ export default function ClubApp() {
     update();
     window.addEventListener("online", update);
     window.addEventListener("offline", update);
-    const prompt = (e: Event) => {
-      e.preventDefault();
-      setInstall(e);
+    const display = window.matchMedia("(display-mode: standalone)");
+    const syncInstall = () =>
+      setInstalled(
+        display.matches ||
+          !!(navigator as Navigator & { standalone?: boolean }).standalone,
+      );
+    const finishInstall = () => {
+      setInstalled(true);
+      setInstallHelp("");
+      setToast("앱을 설치했습니다.");
     };
-    window.addEventListener("beforeinstallprompt", prompt);
+    syncInstall();
+    display.addEventListener("change", syncInstall);
+    window.addEventListener("appinstalled", finishInstall);
     if ("serviceWorker" in navigator)
       navigator.serviceWorker.register("/sw.js").catch(() => {});
     return () => {
       window.removeEventListener("online", update);
       window.removeEventListener("offline", update);
-      window.removeEventListener("beforeinstallprompt", prompt);
+      display.removeEventListener("change", syncInstall);
+      window.removeEventListener("appinstalled", finishInstall);
     };
   }, []);
   useEffect(() => {
@@ -273,6 +293,13 @@ export default function ClubApp() {
       refresh();
       return { ok: true };
     }
+    if (preview && path === "admin/dues" && boot.role === "admin") {
+      const { saveDemoDues } = await import("@/lib/club-preview");
+      saveDemoDues(data);
+      refresh();
+      setToast("미리보기에 반영했습니다.");
+      return { ok: true };
+    }
     if (preview)
       throw new Error("미리보기에서는 실제 데이터를 저장하지 않습니다.");
     if (offline) throw new Error("인터넷에 연결한 후 다시 시도해주세요.");
@@ -289,15 +316,36 @@ export default function ClubApp() {
     link,
     mutate,
     toast: setToast,
-    install,
+    installed,
     installApp: async () => {
-      if (install) {
-        await install.prompt();
-        setInstall(null);
-      } else
-        setToast(
-          "iPhone: Safari 공유 → 홈 화면에 추가 · Android: 브라우저 메뉴 → 앱 설치",
-        );
+      if (installed) return;
+      const host = window as Window & {
+        spotlightInstallPrompt?: {
+          prompt(): Promise<void>;
+          userChoice: Promise<{ outcome: string }>;
+        };
+      };
+      const prompt = host.spotlightInstallPrompt;
+      if (prompt) {
+        delete host.spotlightInstallPrompt;
+        try {
+          await prompt.prompt();
+          const choice = await prompt.userChoice;
+          if (choice.outcome === "accepted") setToast("설치를 요청했습니다.");
+          return;
+        } catch {
+          /* The browser may have invalidated the prompt. */
+        }
+      }
+      const ua = navigator.userAgent;
+      setInstallHelp(
+        /iPhone|iPad|iPod/.test(ua) ||
+          (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+          ? "Safari에서 공유 버튼을 누른 뒤 ‘홈 화면에 추가’와 ‘추가’를 차례로 눌러주세요."
+          : /SamsungBrowser/.test(ua)
+            ? "삼성 인터넷 메뉴에서 ‘현재 페이지 추가’ → ‘홈 화면’을 눌러주세요."
+            : "브라우저 메뉴에서 ‘앱 설치’ 또는 ‘홈 화면에 추가’를 눌러주세요. 앱 안에서 연 페이지라면 Chrome이나 Safari에서 열어주세요.",
+      );
     },
   };
   if (!boot)
@@ -448,6 +496,15 @@ export default function ClubApp() {
             <Screens screen={screen} />
           )}
         </main>
+        {installHelp && (
+          <Modal
+            centered
+            title="홈 화면에 앱 추가"
+            close={() => setInstallHelp("")}
+          >
+            <p>{installHelp}</p>
+          </Modal>
+        )}
         <nav className="bottom-nav" aria-label="주 메뉴">
           {nav.map(({ href, label, icon: Icon }) => {
             const active =

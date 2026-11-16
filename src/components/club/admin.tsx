@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { AttendanceHistory } from "./attendance";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Activity,
   CalendarDays,
@@ -132,7 +132,7 @@ function ManagementLinks({ member }: { member: boolean }) {
 }
 export function AdminHome() {
   const member = useOpsScope() === "member";
-  const { boot, link } = useApp();
+  const { boot, link, installed, installApp } = useApp();
   const [selectedEvent, setSelectedEvent] = useState("");
   const dashboard = useResource(
     `admin/dashboard${selectedEvent ? `?event=${selectedEvent}` : ""}`,
@@ -145,6 +145,11 @@ export function AdminHome() {
         title="오늘도, 함께 빛나게"
         description={`${boot.member?.name || "운영진"}님, 오늘의 운영 현황이에요.`}
       />
+      {!installed && (
+        <button className="button secondary" onClick={installApp}>
+          홈 화면에 앱 설치
+        </button>
+      )}
       <OpsSwitch path="/admin" />
       <Resource resource={dashboard}>
         {(d) => {
@@ -1396,7 +1401,7 @@ export function AdminAttendance() {
 }
 
 export function AdminDues() {
-  const { mutate } = useApp();
+  const { mutate, toast, refresh } = useApp();
   const params = useSearchParams();
   const [month, setMonth] = useState(
     params.get("month") || seoulDate().slice(0, 7),
@@ -1411,6 +1416,78 @@ export function AdminDues() {
   const summary = useResource(
     `admin/dues-summary?month=${month}&member=${member}`,
   );
+  const [page, setPage] = useState(0);
+  const [saving, setSaving] = useState("");
+  const unregistered = useResource(
+    status === "all"
+      ? `admin/dues-unregistered?month=${month}&member=${member}&page=${page}`
+      : null,
+  );
+  const totalMissing = unregistered.data?.total;
+  useEffect(() => {
+    if (typeof totalMissing === "number")
+      setPage((current) =>
+        Math.min(current, Math.max(0, Math.ceil(totalMissing / 30) - 1)),
+      );
+  }, [totalMissing]);
+  function paymentRow(p: ClubRow) {
+    const name = p.members.name;
+    return (
+      <div className="list-card" key={p.member_id}>
+        <label className="checkbox" style={{ flex: 1 }}>
+          <input
+            type="checkbox"
+            aria-label={name + " 회비 납부"}
+            checked={p.status === "paid"}
+            disabled={!!saving || p.status === "exempt"}
+            onChange={async (e) => {
+              setSaving(p.member_id);
+              try {
+                await mutate(
+                  "admin/dues",
+                  {
+                    member_id: p.member_id,
+                    month: p.month,
+                    previous: p.status,
+                    paid: e.target.checked,
+                  },
+                  "PATCH",
+                );
+              } catch (err) {
+                toast((err as Error).message);
+                refresh();
+              } finally {
+                setSaving("");
+              }
+            }}
+          />
+          <span>
+            <strong>{name}</strong>
+            <small>{p.amount.toLocaleString()}원</small>
+          </span>
+        </label>
+        <Badge
+          tone={
+            p.status === "paid" ? "green" : p.status === "unpaid" ? "red" : ""
+          }
+        >
+          {saving === p.member_id
+            ? "저장 중"
+            : p.status === "unregistered"
+              ? "미등록"
+              : paymentLabel(p.status)}
+        </Badge>
+        <button
+          className="text-button"
+          disabled={!!saving}
+          aria-label={name + " 회비 수정"}
+          onClick={() => setEdit(p)}
+        >
+          수정
+        </button>
+      </div>
+    );
+  }
   const query = `month=${month}&status=${status}&member=${member}`;
   return (
     <>
@@ -1456,7 +1533,12 @@ export function AdminDues() {
         type="month"
         aria-label="회비 월"
         value={month}
-        onChange={(e) => setMonth(e.target.value)}
+        onChange={(e) => {
+          if (e.target.value) {
+            setMonth(e.target.value);
+            setPage(0);
+          }
+        }}
       />
       <Chips
         value={status}
@@ -1485,41 +1567,42 @@ export function AdminDues() {
           </>
         )}
       </Resource>
+      <p className="micro">
+        회원 이름 옆에 체크하면 납부완료로 저장됩니다. 체크를 풀면 미납으로
+        바뀝니다.
+      </p>
       <Resource resource={resource}>
         {(rows) =>
           rows.length ? (
-            rows.map((p: ClubRow) => (
-              <button
-                className="list-card full"
-                key={p.id}
-                onClick={() => setEdit(p)}
-              >
-                <Avatar member={p.members || { name: "회원" }} />
-                <div>
-                  <strong>{p.members?.name}</strong>
-                  <small>{p.amount.toLocaleString()}원</small>
-                </div>
-                <Badge
-                  tone={
-                    p.status === "paid"
-                      ? "green"
-                      : p.status === "unpaid"
-                        ? "red"
-                        : ""
-                  }
-                >
-                  {paymentLabel(p.status)}
-                </Badge>
-                <ChevronRight size={16} />
-              </button>
-            ))
+            rows.map(paymentRow)
           ) : (
-            <Empty icon={Wallet} title="등록된 회비가 없어요">
-              상단 + 버튼으로 회원별 월 회비를 등록해주세요.
-            </Empty>
+            <p className="micro">해당 조건에 등록된 회비가 없습니다.</p>
           )
         }
       </Resource>
+      {status === "all" && (
+        <Resource resource={unregistered}>
+          {(d) => (
+            <>
+              {d.rows.map((m: ClubRow) =>
+                paymentRow({
+                  member_id: m.id,
+                  members: m,
+                  month: month + "-01",
+                  amount: 60000,
+                  status: "unregistered",
+                }),
+              )}
+              <Pagination
+                page={page}
+                total={d.total}
+                size={30}
+                setPage={setPage}
+              />
+            </>
+          )}
+        </Resource>
+      )}
       {edit && (
         <Modal title="회원 회비 등록 · 수정" close={() => setEdit(false)}>
           <SaveForm
@@ -1554,7 +1637,11 @@ export function AdminDues() {
             <Field
               label="납부 상태"
               name="status"
-              value={typeof edit === "object" ? edit.status : "unpaid"}
+              value={
+                typeof edit === "object" && edit.status !== "unregistered"
+                  ? edit.status
+                  : "unpaid"
+              }
             >
               {["paid", "unpaid", "exempt"].map((s) => (
                 <option value={s} key={s}>

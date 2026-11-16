@@ -956,7 +956,7 @@ export function ApplicationForm({
 }
 
 export function AccountScreen() {
-  const { boot, link, installApp } = useApp();
+  const { boot, link, installApp, installed } = useApp();
   const params = useSearchParams();
   return (
     <>
@@ -1035,9 +1035,9 @@ export function AccountScreen() {
       )}
       <SectionTitle title="앱 설정" />
       <div className="menu-list">
-        <button onClick={installApp}>
+        <button onClick={installApp} disabled={installed}>
           <Download size={20} />
-          <span>홈 화면에 앱 설치</span>
+          <span>{installed ? "앱 설치됨" : "홈 화면에 앱 설치"}</span>
           <ChevronRight size={18} />
         </button>
         {boot.member && (
