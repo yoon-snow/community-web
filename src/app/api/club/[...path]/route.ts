@@ -142,7 +142,8 @@ async function processRequest(request: Request, segments: string[]) {
         .is("deleted_at", null)
         .lte("starts_at", new Date().toISOString())
         .or(`ends_at.is.null,ends_at.gt.${new Date().toISOString()}`)
-        .order("priority")
+        .order("pinned", { ascending: false })
+    .order("priority")
         .order("created_at", { ascending: false })
         .limit(40),
       who.member
@@ -415,14 +416,17 @@ async function processRequest(request: Request, segments: string[]) {
       counts: counts
         ? {
             members: counts.members,
-            guests: counts.guests,
-            total: counts.total,
+            ...(who.admin ? { guests: counts.guests, total: counts.total } : {}),
           }
         : null,
       ...(who.admin ? { guest_summary: guestSummary } : {}),
       response: response?.response || "unanswered",
       videos,
     });
+  }
+  if (segments[0] === "member-votes" && method === "GET") {
+    requireMember();
+    return json(checked(await db.rpc("member_event_votes", { p_event: uuid.parse(segments[1]) })));
   }
   if (path === "rsvp" && method === "POST") {
     requireMember();
@@ -1229,6 +1233,11 @@ async function processRequest(request: Request, segments: string[]) {
     else checked(await db.from("events").insert(input));
     return json({ ok: true });
   }
+  if (path === "admin/notice-pin" && method === "PATCH") {
+    const input = z.object({ id: uuid, pinned: z.boolean() }).parse(data);
+    checked(await db.from("announcements").update({ pinned: input.pinned }).eq("id", input.id).is("deleted_at", null).select("id").single());
+    return json({ ok: true });
+  }
   if (path === "admin/notices" && (method === "POST" || method === "PATCH")) {
     const input = noticeSchema.parse(data);
     if (method === "PATCH")
@@ -1707,6 +1716,7 @@ function visibleNotices(db: Awaited<ReturnType<typeof serverClient>>) {
     .is("deleted_at", null)
     .lte("starts_at", now)
     .or(`ends_at.is.null,ends_at.gt.${now}`)
+    .order("pinned", { ascending: false })
     .order("priority")
     .order("created_at", { ascending: false });
 }

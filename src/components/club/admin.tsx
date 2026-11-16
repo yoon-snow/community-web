@@ -742,10 +742,6 @@ export function AdminMembers() {
                   <p>
                     {a.phone} · {a.answers.position} · {a.answers.experience}
                   </p>
-                  <details className="prose">
-                    <summary>신청 답변 보기</summary>
-                    <pre>{JSON.stringify(a.answers, null, 2)}</pre>
-                  </details>
                   <ReviewApplication application={a} />
                 </div>
               ))}
@@ -1639,6 +1635,8 @@ export function MemberPicker({
 }
 
 export function AdminNotices() {
+  const { mutate, toast } = useApp();
+  const [saving, setSaving] = useState(false);
   const scope = useSearchParams().get("scope");
   const audience =
     scope === "guest" ? "public" : scope === "member" ? "member" : "";
@@ -1673,6 +1671,27 @@ export function AdminNotices() {
             rows.map((n: ClubRow) => (
               <div key={n.id} className="board-list-row">
                 <NoticeCard notice={n} />
+                <button
+                  className="text-button"
+                  disabled={saving}
+                  aria-pressed={Boolean(n.pinned)}
+                  onClick={async () => {
+                    setSaving(true);
+                    try {
+                      await mutate(
+                        "admin/notice-pin",
+                        { id: n.id, pinned: !n.pinned },
+                        "PATCH",
+                      );
+                    } catch (error) {
+                      toast((error as Error).message);
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                >
+                  {n.pinned ? "고정 해제" : "상단 고정"}
+                </button>
                 <button className="text-button" onClick={() => setEdit(n)}>
                   수정
                 </button>

@@ -56,7 +56,8 @@ test("member preview: RSVP counts, private activity, video empty state, navigati
   page,
 }) => {
   await page.goto("/preview?role=member");
-  await expect(page.getByText("게스트 예정", { exact: false })).toBeVisible();
+  await page.getByRole("dialog").getByRole("button", {name:"닫기"}).click();
+  await expect(page.getByText("게스트 예정", { exact: false })).toHaveCount(0);
   await page
     .getByRole("navigation", { name: "주 메뉴" })
     .getByRole("link", { name: "내 정보", exact: true })
@@ -183,22 +184,19 @@ test("S-Core Dream loads locally and role picker opens the corresponding home/na
   ).toBeVisible();
 });
 
-test("member sees only 18/4/22 aggregate counts and receives no guest or roster notifications", async ({
+test("member sees member votes and receives no guest or roster notifications", async ({
   page,
 }) => {
   await page.goto("/preview?role=member");
+  await page.getByRole("dialog").getByRole("button", {name:"닫기"}).click();
   const counts = page.locator(".participation .count-row");
-  await expect(counts.locator("b")).toHaveText(["18", "4", "22"]);
+  await expect(counts.locator("b")).toHaveText(["3"]);
   await expect(counts).toContainText("회원 참석 예정");
-  await expect(counts).toContainText("게스트 예정");
-  await expect(counts).toContainText("예상 참가 인원");
+  await expect(counts).not.toContainText("게스트 예정");
+  await expect(counts).not.toContainText("예상 참가 인원");
   await expect(page.getByText(/첫방문|다시온|스파이크|구력/)).toHaveCount(0);
   await page.locator(".event-card.featured").click();
-  await expect(page.locator(".participation .count-row b")).toHaveText([
-    "18",
-    "4",
-    "22",
-  ]);
+  await expect(page.locator(".participation .count-row b")).toHaveText(["3"]);
   await expect(page.getByText(/첫방문|다시온|스파이크|구력/)).toHaveCount(0);
   await page.goto("/preview/notifications?role=member");
   await expect(

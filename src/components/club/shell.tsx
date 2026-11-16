@@ -263,6 +263,16 @@ export default function ClubApp() {
       setToast("이 탭의 미리보기에 반영했습니다.");
       return { ok: true };
     }
+    if (
+      preview &&
+      ((path === "rsvp" && boot.member) ||
+        (path === "admin/notice-pin" && boot.role === "admin"))
+    ) {
+      const { updateDemoVoteOrPin } = await import("@/lib/club-preview");
+      updateDemoVoteOrPin(path, data);
+      refresh();
+      return { ok: true };
+    }
     if (preview)
       throw new Error("미리보기에서는 실제 데이터를 저장하지 않습니다.");
     if (offline) throw new Error("인터넷에 연결한 후 다시 시도해주세요.");
@@ -324,6 +334,7 @@ export default function ClubApp() {
           { href: "/", label: "홈", icon: Home },
           { href: "/calendar", label: "일정", icon: CalendarDays },
           { href: "/attendance", label: "출석", icon: CheckCircle2 },
+          { href: "/notices", label: "게시판", icon: ClipboardList },
           { href: "/account", label: "내 정보", icon: UserRound },
         ]
       : [

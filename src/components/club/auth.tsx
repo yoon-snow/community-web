@@ -59,6 +59,22 @@ export function AuthPanel({ initialMode = "signin" }: { initialMode?: Mode }) {
       setBusy(false);
     }
   };
+  if (mode === "signup" && message)
+    return (
+      <section className="card prose" aria-live="polite">
+        <h2 tabIndex={-1} ref={(node) => node?.focus()}>
+          이메일을 확인해주세요
+        </h2>
+        <p>{message}</p>
+        <p>
+          받은편지함과 스팸함을 확인해주세요. 인증 링크를 연 후 회원 가입 신청을
+          이어갈 수 있어요.
+        </p>
+        <button className="button primary" onClick={() => changeMode("signin")}>
+          로그인하기
+        </button>
+      </section>
+    );
   return (
     <div className="login-card card">
       <span className="login-symbol">
@@ -80,7 +96,7 @@ export function AuthPanel({ initialMode = "signin" }: { initialMode?: Mode }) {
       </h2>
       <p>
         {mode === "signup"
-          ? "계정을 만든 뒤 회원가입 신청을 작성해주세요. 회원 기능은 운영진 승인 후 활성화됩니다."
+          ? "계정을 만든 뒤 받은편지함에서 인증 메일을 열고 링크를 눌러주세요. 이메일 확인 후 가입 신청을 작성할 수 있어요. 회원 기능은 운영진 승인 후 활성화됩니다."
           : mode === "request-reset"
             ? "가입한 이메일 주소로 비밀번호 재설정 안내를 보내드려요."
             : update

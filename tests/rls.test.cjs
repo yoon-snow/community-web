@@ -2618,3 +2618,23 @@ test("support tickets isolate owners, snapshot FAQs, target one admin and notify
   assert.ok(row.faq_question);
   assert.ok(row.last_reply_at);
 });
+
+test("event votes disclose only active members' names and responses to approved members", async () => {
+  const query = "select public.member_event_votes($1) as votes";
+  await assert.rejects(as("anon", null, query, [event]));
+  await assert.rejects(as("authenticated", "55555555-5555-4555-8555-555555555555", query, [event]));
+  const { rows } = await memberQuery(query, [event]);
+  assert.ok(rows[0].votes.some(v => v.name === "회원"));
+  assert.ok(rows[0].votes.every(v => Object.keys(v).sort().join() === "name,response"));
+  assert.ok(rows[0].votes.every(v => ["yes","no","unanswered"].includes(v.response)));
+  assert.ok(rows[0].votes.every(v => v.name !== "개인게스트"));
+});
+
+test("only admins can pin posts and pinning preserves the content version", async () => {
+  const sql = "update public.announcements set pinned=$1 where title='회원공지' returning pinned,version";
+  assert.equal((await memberQuery(sql, [true])).rows.length, 0);
+  const pinned = await adminQuery(sql, [true]);
+  assert.equal(pinned.rows[0].pinned, true);
+  const cleared = await adminQuery(sql, [false]);
+  assert.equal(cleared.rows[0].version, pinned.rows[0].version);
+});

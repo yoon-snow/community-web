@@ -330,7 +330,7 @@ export function monthBounds(month: string) {
 }
 
 export function sortAnnouncements<
-  T extends { kind?: string; created_at?: string },
+  T extends { kind?: string; created_at?: string; pinned?: boolean },
 >(rows: T[]): T[] {
   const rank: Record<string, number> = {
     emergency: 0,
@@ -340,6 +340,7 @@ export function sortAnnouncements<
   };
   return [...rows].sort(
     (a, b) =>
+      Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) ||
       (rank[a.kind || ""] ?? 4) - (rank[b.kind || ""] ?? 4) ||
       (b.created_at || "").localeCompare(a.created_at || ""),
   );

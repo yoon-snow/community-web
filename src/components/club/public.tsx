@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   CalendarDays,
@@ -59,6 +59,61 @@ const RuleForm = dynamic(
   { loading: Loader },
 );
 
+function MemberWelcome() {
+  const { boot, link, installApp } = useApp();
+  const [open, setOpen] = useState(false);
+  const key =
+    "spotlight-member-welcome-" +
+    boot.member.id +
+    (boot.preview ? "-demo" : "");
+  useEffect(() => {
+    try {
+      setOpen(!localStorage.getItem(key));
+    } catch {
+      setOpen(true);
+    }
+  }, [key]);
+  function close() {
+    setOpen(false);
+    try {
+      localStorage.setItem(key, "1");
+    } catch {
+      /* Storage may be disabled. */
+    }
+  }
+  if (!open) return null;
+  return (
+    <Modal centered title="회원 가입이 승인됐어요" close={close}>
+      <div className="prose">
+        <h3>홈 화면에 SpotLight 추가하기</h3>
+        <p>
+          <strong>삼성 갤럭시</strong>
+          <br />
+          삼성 인터넷 메뉴에서 ‘현재 페이지 추가’ → ‘홈 화면’을 선택하세요.
+          Chrome에서는 메뉴의 ‘홈 화면에 추가’를 선택하세요.
+        </p>
+        <p>
+          <strong>iPhone</strong>
+          <br />
+          Safari 공유 메뉴에서 ‘홈 화면에 추가’를 누른 뒤 설치한 앱을
+          열어주세요.
+        </p>
+        <button className="button secondary full" onClick={installApp}>
+          홈 화면에 앱 설치
+        </button>
+        <p>운동 변경과 긴급공지를 받으려면 알림 설정에서 Push를 켜주세요.</p>
+        <Link
+          className="button primary full"
+          href={link("/notifications")}
+          onClick={close}
+        >
+          알림 설정 열기
+        </Link>
+      </div>
+    </Modal>
+  );
+}
+
 export function HomeScreen() {
   const { boot, link } = useApp();
   const next = boot.events.find(
@@ -96,6 +151,7 @@ export function HomeScreen() {
           </span>
         </div>
       )}
+      {boot.role === "member" && boot.member && <MemberWelcome />}
       <Emergency />
       {boot.member ? (
         <h1 className="member-hello">
@@ -318,12 +374,6 @@ export function EventActions({ event }: { event: ClubEvent }) {
             <span>
               회원 참석 예정 <b>{d.counts?.members || 0}</b>
             </span>
-            <span>
-              게스트 예정 <b>{d.counts?.guests || 0}</b>
-            </span>
-            <span>
-              예상 참가 인원 <b>{d.counts?.total || 0}</b>
-            </span>
           </div>
           {new Date(event.starts_at) > new Date() &&
             event.status === "scheduled" &&
@@ -357,9 +407,7 @@ export function EventActions({ event }: { event: ClubEvent }) {
                 </button>
               </div>
             )}
-          <p className="micro">
-            게스트는 운영진이 입금을 확인한 인원만 표시됩니다.
-          </p>
+          <VoteRoster eventId={event.id} />
         </div>
       )}
     </Resource>
@@ -367,6 +415,36 @@ export function EventActions({ event }: { event: ClubEvent }) {
 }
 
 // Keep pale club colors intact and lift dark colors enough for navy date text.
+function VoteRoster({ eventId }: { eventId: string }) {
+  const [open, setOpen] = useState(false);
+  const votes = useResource(open ? "member-votes/" + eventId : null);
+  return (
+    <details className="prose" onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary>회원별 투표 현황</summary>
+      {open && (
+        <Resource resource={votes}>
+          {(rows: ClubRow[]) =>
+            (["yes", "no", "unanswered"] as const).map((status) => {
+              const names = rows
+                .filter((row) => row.response === status)
+                .map((row) => row.name);
+              return (
+                <div key={status}>
+                  <strong>
+                    {{ yes: "참석", no: "불참", unanswered: "미응답" }[status]}{" "}
+                    {names.length}명
+                  </strong>
+                  <p>{names.join(" · ") || "해당 회원 없음"}</p>
+                </div>
+              );
+            })
+          }
+        </Resource>
+      )}
+    </details>
+  );
+}
+
 function calendarFill(color = "#8293a8") {
   const rgb = [1, 3, 5].map((start) =>
     parseInt(color.slice(start, start + 2), 16),
@@ -586,9 +664,11 @@ export function CalendarScreen() {
                           <strong>{e.title}</strong>
                           <span>{e.location}</span>
                           {e.description && <span>{e.description}</span>}
-                          <Badge tone={canApplyAsGuest(e) ? "green" : ""}>
-                            {guestAvailability(e)}
-                          </Badge>
+                          {!boot.member && (
+                            <Badge tone={canApplyAsGuest(e) ? "green" : ""}>
+                              {guestAvailability(e)}
+                            </Badge>
+                          )}
                           {e.change_reason && (
                             <span className="emergency-change">
                               {e.change_reason}
@@ -644,25 +724,31 @@ export function EventScreen({ id }: { id: string }) {
                     d.event.kind}
                 </strong>
               </div>
-              <div className="detail-line">
-                <span>게스트 신청</span>
-                <Badge tone={canApplyAsGuest(d.event) ? "green" : ""}>
-                  {guestAvailability(d.event)}
-                </Badge>
-              </div>
+              {(!boot.member || screen.startsWith("/admin")) && (
+                <div className="detail-line">
+                  <span>게스트 신청</span>
+                  <Badge tone={canApplyAsGuest(d.event) ? "green" : ""}>
+                    {guestAvailability(d.event)}
+                  </Badge>
+                </div>
+              )}
               {d.event.description &&
                 d.event.description.trim() !==
                   "편안한 운동복과 실내 운동화를 준비해주세요." && (
                   <p>{d.event.description}</p>
                 )}
-              <div className="divider" />
-              <div className="detail-line">
-                <span>게스트 참가비</span>
-                <strong>{d.event.guest_fee.toLocaleString()}원</strong>
-              </div>
-              <p className="micro">
-                입금 후 운영진 확인 시 최종 참가가 확정됩니다.
-              </p>
+              {(!boot.member || screen.startsWith("/admin")) && (
+                <>
+                  <div className="divider" />
+                  <div className="detail-line">
+                    <span>게스트 참가비</span>
+                    <strong>{d.event.guest_fee.toLocaleString()}원</strong>
+                  </div>
+                  <p className="micro">
+                    입금 후 운영진 확인 시 최종 참가가 확정됩니다.
+                  </p>
+                </>
+              )}
             </div>
             {boot.member ? (
               <EventActions event={d.event} />
@@ -754,6 +840,7 @@ export function NoticeCard({ notice }: { notice: ClubRow }) {
             }
           </Badge>
         </span>
+        {notice.pinned && <Badge tone="gold">상단 고정</Badge>}
         <strong>{notice.title}</strong>
         <span className="feed-excerpt">{notice.content}</span>
         <span className="feed-open">

@@ -38,8 +38,13 @@ export function updatePreviewKind(method: string, data: ClubRow) {
 }
 export function previewData(role: string) {
   const scheduleKinds = previewKinds();
+  const base = baseData(role);
   return {
-    ...baseData(role),
+    ...base,
+    announcements: base.announcements.map((n) => ({
+      ...n,
+      pinned: demoSetting("pin", n.id) === "true",
+    })),
     scheduleKinds,
     archivedKinds: scheduleKinds.filter((k) => k.archived).map((k) => k.key),
     rules: [
@@ -63,7 +68,49 @@ export function previewData(role: string) {
     })),
   };
 }
+function demoSetting(group: string, id: string) {
+  return typeof window === "undefined"
+    ? null
+    : sessionStorage.getItem("spotlight-demo-" + group + "-" + id);
+}
+export function updateDemoVoteOrPin(path: string, data: ClubRow) {
+  if (path === "rsvp")
+    sessionStorage.setItem(
+      "spotlight-demo-vote-" + data.event_id,
+      data.response,
+    );
+  else
+    sessionStorage.setItem(
+      "spotlight-demo-pin-" + data.id,
+      String(data.pinned),
+    );
+}
 export function previewResource(path: string, boot: ClubRow) {
+  if (
+    (path.startsWith("member-votes/") || path.startsWith("events/")) &&
+    boot.member
+  ) {
+    const response = demoSetting("vote", path.split("/")[1]) || "unanswered";
+    const rows = [
+      { name: boot.member.name, response },
+      { name: "라이트", response: "yes" },
+      { name: "코트", response: "yes" },
+      { name: "리시브", response: "no" },
+      { name: "토스", response: "unanswered" },
+      { name: "서브", response: "yes" },
+    ];
+    if (path.startsWith("member-votes/")) return rows;
+    const result = baseResource(path, boot);
+    const members = rows.filter((row) => row.response === "yes").length;
+    return {
+      ...result,
+      response,
+      counts:
+        boot.role === "admin"
+          ? { ...result.counts, members, total: members + result.counts.guests }
+          : { members },
+    };
+  }
   if (path.startsWith("post-comments/"))
     return {
       rows: path.includes("&parent=")
@@ -78,5 +125,9 @@ export function previewResource(path: string, boot: ClubRow) {
           ],
       more: false,
     };
+  if (path === "admin/notices" || path.startsWith("notices?")) {
+    const announcements = boot.announcements.map((n: ClubRow) => ({ ...n, pinned: demoSetting("pin", n.id) === "true" }));
+    return baseResource(path, { ...boot, announcements });
+  }
   return baseResource(path, boot);
 }

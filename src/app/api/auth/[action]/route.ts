@@ -70,7 +70,7 @@ export async function POST(
             : json(
                 {
                   error:
-                    "이메일 또는 비밀번호를 확인해주세요. 가입 확인 메일의 인증도 완료해야 합니다.",
+                    error.code === "email_not_confirmed" ? "받은편지함의 가입 확인 메일에서 이메일 인증을 완료해주세요." : "이메일 또는 비밀번호를 확인해주세요.",
                 },
                 401,
               );

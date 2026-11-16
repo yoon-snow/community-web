@@ -116,7 +116,9 @@ export function ApplicationForm({
       : `guest-guidance${values.event_id ? `?event=${values.event_id}` : ""}`,
   );
   const confirmedNotices = membership
-    ? boot.announcements
+    ? boot.announcements.filter(
+        (notice: ClubRow) => notice.audience === "member",
+      )
     : guidance.data?.announcements || [];
   const questions = boot.questions.filter(
     (q: ClubRow) =>
@@ -386,51 +388,53 @@ export function ApplicationForm({
             </p>
           </div>
         )}
-        <div className="card">
-          <small>접수 번호</small>
-          <code>{receipt}</code>
-          {!membership && (
-            <div className="button-row">
-              {["복사", "공유하기"].map((action) => (
-                <button
-                  key={action}
-                  type="button"
-                  className="button secondary"
-                  onClick={async () => {
-                    try {
-                      if (action === "공유하기" && navigator.share)
-                        await navigator.share({
-                          title: "SpotLight 게스트 신청",
-                          text: "접수번호 " + receipt,
-                          url: new URL("/receipt", location.origin).href,
-                        });
-                      else {
-                        await navigator.clipboard.writeText(
-                          action === "복사"
-                            ? receipt
-                            : "SpotLight 접수번호 " +
-                                receipt +
-                                " " +
-                                location.origin +
-                                "/receipt",
-                        );
-                        toast("복사했습니다.");
+        {!membership && (
+          <div className="card">
+            <small>접수 번호</small>
+            <code>{receipt}</code>
+            {!membership && (
+              <div className="button-row">
+                {["복사", "공유하기"].map((action) => (
+                  <button
+                    key={action}
+                    type="button"
+                    className="button secondary"
+                    onClick={async () => {
+                      try {
+                        if (action === "공유하기" && navigator.share)
+                          await navigator.share({
+                            title: "SpotLight 게스트 신청",
+                            text: "접수번호 " + receipt,
+                            url: new URL("/receipt", location.origin).href,
+                          });
+                        else {
+                          await navigator.clipboard.writeText(
+                            action === "복사"
+                              ? receipt
+                              : "SpotLight 접수번호 " +
+                                  receipt +
+                                  " " +
+                                  location.origin +
+                                  "/receipt",
+                          );
+                          toast("복사했습니다.");
+                        }
+                      } catch (e) {
+                        if ((e as Error).name !== "AbortError")
+                          toast("접수번호를 길게 눌러 복사해주세요.");
                       }
-                    } catch (e) {
-                      if ((e as Error).name !== "AbortError")
-                        toast("접수번호를 길게 눌러 복사해주세요.");
-                    }
-                  }}
-                >
-                  {action}
-                </button>
-              ))}
-            </div>
-          )}
-          <p className="micro">
-            접수 번호를 저장해주세요. 확인이 필요하면 운영진에게 알려주세요.
-          </p>
-        </div>
+                    }}
+                  >
+                    {action}
+                  </button>
+                ))}
+              </div>
+            )}
+            <p className="micro">
+              접수 번호를 저장해주세요. 확인이 필요하면 운영진에게 알려주세요.
+            </p>
+          </div>
+        )}
         {!membership && (
           <>
             <Link className="button secondary full" href={link("/receipt")}>
@@ -693,6 +697,12 @@ export function ApplicationForm({
           <>
             <div className="card prose">
               <h2>신청 전 꼭 읽어주세요</h2>
+              {membership && (
+                <p>
+                  신청서를 보내면 운영진이 내용을 확인합니다. 승인 여부는 내
+                  정보에서 확인할 수 있어요.
+                </p>
+              )}
               {!membership && guidance.loading && (
                 <p role="status">최신 공지를 불러오고 있어요.</p>
               )}
@@ -956,11 +966,11 @@ export function AccountScreen() {
           비밀번호가 변경되었습니다. 새 비밀번호로 로그인해주세요.
         </p>
       )}
-      {params.get("error") && (
+      {params.get("error") && !boot.user && (
         <div className="error-box" role="alert">
           {params.get("error") === "setup"
             ? "로그인 서비스 연결을 준비 중입니다."
-            : "인증이 완료되지 않았습니다. 다시 시도해주세요."}
+            : "이 링크로 로그인할 수 없습니다. 이미 이메일을 확인하셨다면 아래에서 로그인해주세요."}
         </div>
       )}
       {boot.member ? (
@@ -1430,7 +1440,8 @@ export function NotificationsScreen() {
             {pushBusy ? "설정 중…" : "중요 소식을 Push로 받기"}
           </button>
           <p className="micro">
-            iPhone은 홈 화면에 설치한 앱에서 알림을 켜주세요.
+            iPhone은 Safari에서 홈 화면에 추가한 뒤 앱을 열어주세요. 삼성
+            갤럭시는 삼성 인터넷 또는 Chrome에서 알림을 허용해주세요.
           </p>
           <Resource resource={resource}>
             {(rows) =>

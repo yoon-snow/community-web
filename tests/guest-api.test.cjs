@@ -323,13 +323,13 @@ function eventDb() {
     },
   };
 }
-test("member event API explicitly projects only aggregate counts, excludes admin summary and applicant details", async () => {
+test("member event API explicitly projects only member counts, excludes admin summary and applicant details", async () => {
   const db = eventDb();
   const handler = route(member, db);
   const response = await get(handler, ["events", eid]);
   assert.equal(response.status, 200);
   const data = await response.json();
-  assert.deepEqual(data.counts, { members: 18, guests: 4, total: 22 });
+  assert.deepEqual(data.counts, { members: 18 });
   assert.equal(Object.hasOwn(data, "guest_summary"), false);
   assert.ok(!JSON.stringify(data).includes("SECRET GUEST"));
   assert.deepEqual(db.rpcCalls, ["event_counts"]);
