@@ -475,7 +475,7 @@ export function ApplicationForm({
           미리 확인할 수 있지만, 운영 설정이 완료되기 전에는 접수할 수 없어요.
         </div>
       )}
-      {!membership && step !== 3 && (
+      {!membership && step === 0 && (
         <details className="card prose form-notices">
           <summary>공지 및 필독사항 확인하기</summary>
           <Resource resource={guidance}>
@@ -752,28 +752,6 @@ export function ApplicationForm({
                   </details>
                 ))}
             </div>
-            {!membership && (
-              <label className="checkbox">
-                <input
-                  type="checkbox"
-                  name="notice_consent"
-                  required
-                  checked={Boolean(values.notice_consent)}
-                  onChange={(e) =>
-                    setValues((v) => ({
-                      ...v,
-                      notice_consent: e.target.checked,
-                    }))
-                  }
-                />
-                <span>
-                  {label("notice_consent", "공지사항을 확인했습니다. (필수)")}
-                  {hint("notice_consent") && (
-                    <small className="micro">{hint("notice_consent")}</small>
-                  )}
-                </span>
-              </label>
-            )}
             <label className="checkbox">
               <input
                 type="checkbox"
@@ -781,11 +759,11 @@ export function ApplicationForm({
                 required
                 checked={Boolean(values.rules_consent)}
                 onChange={(e) =>
-                  setValues((v) => ({ ...v, rules_consent: e.target.checked }))
+                  setValues((v) => ({ ...v, rules_consent: e.target.checked, ...(!membership && { notice_consent: e.target.checked }) }))
                 }
               />
               <span>
-                운동 일정과 참가 안내를 확인하고 동의합니다. (필수)
+                {membership ? "운동 일정과 참가 안내를 확인하고 동의합니다. (필수)" : "운동 일정과 공지·필독사항, 참가 안내를 확인하고 동의합니다. (필수)"}
                 {hint("rules_consent") && (
                   <small className="micro">{hint("rules_consent")}</small>
                 )}

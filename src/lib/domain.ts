@@ -373,5 +373,7 @@ export function guestAvailability(event: ClubEvent): string {
           ? "2주 전부터 신청 가능"
           : event.guests_open && guestCalendarKind(event.kind)
             ? "게스트 신청 가능"
-            : "게스트 신청 불가";
+            : guestCalendarKind(event.kind) && new Date(seoulDate(event.starts_at) + "T12:00:00Z").getUTCDay() === 0
+              ? "게스트 접수 전 · 일요일 일정 확인 후 오픈"
+              : "게스트 신청 불가";
 }

@@ -533,6 +533,11 @@ export function CalendarScreen() {
             >
               <ChevronRight />
             </button>
+            <button className="text-button calendar-today" onClick={() => {
+              const today = seoulDate();
+              setMonth(today.slice(0, 7));
+              setSelected(today);
+            }}>오늘</button>
             {boot.role === "admin" && (
               <Link
                 className="text-button planner-settings"
@@ -565,7 +570,7 @@ export function CalendarScreen() {
                     new Set(
                       e.map((v) =>
                         v.is_emergency || v.status === "cancelled"
-                          ? "#ffc6c6"
+                          ? "var(--calendar-urgent)"
                           : calendarFill(byKind.get(v.kind)?.color),
                       ),
                     ),
@@ -656,7 +661,7 @@ export function CalendarScreen() {
                           style={{
                             borderColor:
                               e.is_emergency || e.status === "cancelled"
-                                ? "var(--red)"
+                                ? "var(--calendar-urgent)"
                                 : byKind.get(e.kind)?.color || "var(--gold)",
                           }}
                         >
@@ -763,7 +768,7 @@ export function EventScreen({ id }: { id: string }) {
               <EventActions event={d.event} />
             ) : canApplyAsGuest(d.event) ? (
               <Link
-                href={link(`/guest-guide?event=${id}`)}
+                href={link(`/apply?event=${id}`)}
                 className="button primary full"
               >
                 공지 확인하고 게스트 신청
@@ -951,7 +956,6 @@ export function GuestGuide() {
   const { link } = useApp();
   const params = useSearchParams();
   const event = params.get("event");
-  const [confirmed, setConfirmed] = useState(false);
   const resource = useResource(event ? `guest-guidance?event=${event}` : null);
   return (
     <>
@@ -968,15 +972,7 @@ export function GuestGuide() {
               {d.event && <EventCard event={d.event} interactive={false} />}
               <SectionTitle title="공지 및 필독사항" />
               <GuestNotices notices={d.announcements} />
-              <label className="checkbox">
-                <input
-                  type="checkbox"
-                  checked={confirmed}
-                  onChange={(e) => setConfirmed(e.target.checked)}
-                />
-                <span>운동 일정과 공지·필독사항을 확인했습니다.</span>
-              </label>
-              {confirmed && d.event && canApplyAsGuest(d.event) ? (
+              {d.event && canApplyAsGuest(d.event) ? (
                 <Link
                   className="button primary full"
                   href={link(`/apply?event=${event}`)}

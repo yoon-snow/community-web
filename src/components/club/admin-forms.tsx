@@ -50,6 +50,9 @@ export function EventEditor({
   const defaultStart = day + "T" + (weekday === 0 ? "17:00" : "18:00");
   const defaultEnd = day + "T" + (weekday === 0 ? "20:00" : "21:00");
 
+  const [startDay, setStartDay] = useState(event ? seoulDate(event.starts_at) : day);
+  const isSunday = (date: string) => new Date(date + "T12:00:00Z").getUTCDay() === 0;
+  const [guestsOpen, setGuestsOpen] = useState(event?.guests_open ?? !isSunday(startDay));
   const [urgent, setUrgent] = useState(Boolean(event?.is_emergency));
   const local = (s: string) => {
     const date = new Date(s);
@@ -116,6 +119,14 @@ export function EventEditor({
           label="시작 · 한국 시간"
           name="starts_at"
           type="datetime-local"
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+            const date = e.target.value.slice(0, 10);
+            if (date && date !== startDay) {
+              if (isSunday(date)) setGuestsOpen(false);
+              else if (!event && isSunday(startDay)) setGuestsOpen(true);
+              setStartDay(date);
+            }
+          }}
           value={event ? local(event.starts_at) : defaultStart}
           required
         />
@@ -174,9 +185,10 @@ export function EventEditor({
           <input
             type="checkbox"
             name="guests_open"
-            defaultChecked={event?.guests_open ?? true}
+            checked={guestsOpen}
+            onChange={(e) => setGuestsOpen(e.target.checked)}
           />
-          <span>게스트 신청 허용</span>
+          <span>{isSunday(startDay) ? "일요일 시간·장소 확정 후 게스트 신청 허용" : "게스트 신청 허용"}</span>
         </label>
         <label className="checkbox">
           <input

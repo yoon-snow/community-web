@@ -298,8 +298,10 @@ test("calendar date reveals details and emergency red marker; admin calendar kee
   const original = await heading.innerText();
   await page.getByRole("button", { name: "다음 달", exact: true }).click();
   await expect(heading).not.toHaveText(original);
-  await page.getByRole("button", { name: "이전 달", exact: true }).click();
+  await page.getByRole("button", { name: "오늘", exact: true }).click();
   await expect(heading).toHaveText(original);
+  await expect(page.locator('.calendar-grid button[aria-current="date"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".calendar-legend i.cancelled")).toHaveCSS("background-color", "rgb(220, 38, 38)");
   await page
     .locator('.calendar-grid button[aria-label*="긴급 변경"]')
     .first()
@@ -443,7 +445,7 @@ test("changed notices require renewed consent and the submitted receipt carries 
   ).toBeVisible();
   expect(submitted).toHaveLength(0);
   await expect(
-    page.getByLabel("운동 일정과 참가 안내를 확인하고 동의합니다. (필수)"),
+    page.getByLabel("운동 일정과 공지·필독사항, 참가 안내를 확인하고 동의합니다. (필수)"),
   ).not.toBeChecked();
   for (const checkbox of await page.getByRole("checkbox").all())
     await checkbox.check();

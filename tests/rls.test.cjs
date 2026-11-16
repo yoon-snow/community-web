@@ -2474,7 +2474,7 @@ test("weekly schedule fills Korea dates once, preserves edits, and limits operat
   for (const s of slots) {
     assert.ok([1, 2, 4, 5, 7].includes(s.dow));
     assert.equal(s.location, "광명동초등학교");
-    assert.equal(s.guests_open, true);
+    assert.equal(s.guests_open, s.dow !== 7);
     assert.equal(s.kind, [1, 5].includes(s.dow) ? "lesson" : "game");
     assert.equal(s.guest_fee, s.kind === "lesson" ? 15000 : 5000);
     assert.equal(s.start, s.dow === 7 ? "17:00" : "18:00");

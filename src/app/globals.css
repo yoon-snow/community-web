@@ -2644,7 +2644,7 @@ button.emergency { width: 100%; text-align: left; }
 .calendar .calendar-legend { gap: 8px 12px; }
 .calendar .calendar-legend > span { color: var(--secondary-ink); font-size: 11px; }
 .calendar .calendar-legend i { width: 12px; height: 12px; border-radius: 3px; border: 1px solid #10203a30; }
-.calendar .calendar-legend i.cancelled { background: #ffc6c6; }
+.calendar .calendar-legend i.cancelled { background: var(--calendar-urgent); }
 .calendar.card { box-shadow: none; }
 .agenda-row { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:start; gap:14px; padding:18px 14px; border-block-start:1px solid var(--border); }
 .agenda-time,.agenda-body { display:grid; align-content:start; gap:6px; }
@@ -2667,7 +2667,7 @@ button.emergency { width: 100%; text-align: left; }
 }
 .app-shell.ops-shell .event-card.featured { background: #162b46; }
 
-.club-planner { background: var(--card); border: 1px solid var(--border); border-radius: 24px; overflow: hidden; }
+.club-planner { --calendar-urgent: #dc2626; background: var(--card); border: 1px solid var(--border); border-radius: 24px; overflow: hidden; }
 .club-planner .calendar.card { margin: 0; border: 0; padding: 18px 14px 10px; background: transparent; }
 .club-planner .calendar-heading { justify-content: flex-start; gap: 2px; }
 .club-planner .calendar-heading h2 { font-size: 24px; margin-inline-end: 6px; }
@@ -2687,7 +2687,7 @@ button.emergency { width: 100%; text-align: left; }
 }
 .club-planner .calendar-grid button.today { box-shadow: none; }
 .club-planner .calendar-grid button:focus-visible { outline: 2px solid var(--text); outline-offset: -2px; }
-.club-planner .day-alert { right: 2px; top: 1px; border-radius: 50%; background: #ffc6c6; color: #781721; padding-inline: 3px; }
+.club-planner .day-alert { right: 2px; top: 1px; border-radius: 50%; background: var(--calendar-urgent); color: #fff; padding-inline: 3px; }
 .club-planner .calendar-legend { justify-content: flex-start; border: 0; margin-top: 6px; padding: 4px 2px; }
 .planner-agenda { border-top: 1px solid var(--border); border-radius: 24px 24px 0 0; padding: 12px 16px 18px; box-shadow: 0 -4px 14px rgb(15 31 61 / 5%); }
 .planner-agenda::before { content: ""; display: block; margin: 0 auto 20px; width: 30px; height: 3px; background: var(--border); border-radius: 3px; }
@@ -2743,3 +2743,6 @@ button.emergency { width: 100%; text-align: left; }
 .post-comments .comment-compose textarea { flex:1; min-width:110px; }
 .post-comments .comment-compose .button { width:40px; height:40px; min-height:40px; padding:0; }
 .comment-compose .form-error { flex-basis:100%; }
+
+.calendar-heading .calendar-today { min-width: 44px; min-height: 44px; }
+.form-notices + .application-form { margin-block-start: 16px; }
