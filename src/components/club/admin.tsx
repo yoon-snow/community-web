@@ -809,7 +809,7 @@ export function AdminMembers() {
                 <div>
                   <strong>{m.name}</strong>
                   <small>
-                    {m.position || "미정"} ·{" "}
+                    {m.gender?.trim() || "성별 미입력"} · {m.position || "미정"} ·{" "}
                     {m.admins?.titles?.join(" · ") || "회원"}
                   </small>
                 </div>

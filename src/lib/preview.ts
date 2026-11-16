@@ -238,6 +238,7 @@ export function previewResource(path: string, boot: ClubRow): any {
       ...member,
       id: i === 0 ? member.id : `${i + 3}2222222-2222-4222-8222-222222222222`,
       name,
+      gender: ["여성", "남성", null][i % 3],
       position: ["세터", "레프트", "센터"][i % 3],
       birth_date: "1998-01-01",
       phone: "01000000000",
