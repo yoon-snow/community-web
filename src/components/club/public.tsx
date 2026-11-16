@@ -894,9 +894,9 @@ export function NoticeDialog({
                 ? "운영진"
                 : "회원"}
           </Badge>
+          {actions}
         </div>
-        <p>{notice.content}</p>
-        {actions}
+        <p className="post-content-panel">{notice.content}</p>
       </div>
       <PostComments post={notice.id} />
     </Modal>

@@ -242,7 +242,7 @@ export function SaveForm({
 }: {
   children: ReactNode;
   onSubmit: (form: FormData) => Promise<void>;
-  submit?: string;
+  submit?: ReactNode;
   className?: string;
 }) {
   const [busy, setBusy] = useState(false);

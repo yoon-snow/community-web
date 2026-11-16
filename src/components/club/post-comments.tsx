@@ -1,6 +1,7 @@
 "use client";
+import { MessageCircle, Send, Pencil, Trash2, Check, X } from "lucide-react";
 import { useState } from "react";
-import { useApp, useResource, Resource, SaveForm } from "./core";
+import { useApp, useResource, Resource, SaveForm, Avatar } from "./core";
 import { formatDate, type ClubRow } from "@/lib/domain";
 export function PostComments({
   post,
@@ -30,7 +31,16 @@ export function PostComments({
     <section className={parent ? "reply-thread" : "post-comments"}>
       <h3>{parent ? "답글" : "댓글"}</h3>
       <SaveForm
-        submit={parent ? "답글 등록" : "댓글 등록"}
+        className="comment-compose"
+        submit={
+          <span
+            role="img"
+            aria-label={parent ? "답글 등록" : "댓글 등록"}
+            title={parent ? "답글 등록" : "댓글 등록"}
+          >
+            <Send size={16} />
+          </span>
+        }
         onSubmit={async () => {
           await mutate(path, { body: draft, parent_id: parent });
           setPage(0);
@@ -59,13 +69,22 @@ export function PostComments({
             )}
             {d.rows.map((c: ClubRow) => (
               <article className="post-comment" key={c.id}>
-                <small>
-                  {c.mine ? "내 댓글" : "회원 댓글"} ·{" "}
-                  {formatDate(c.created_at)}
-                </small>
+                <header className="comment-author">
+                  <Avatar member={c.author || { name: "회원" }} />
+                  <strong>{c.author?.name || "회원"}</strong>
+                  {c.mine && <small>나</small>}
+                  <time dateTime={c.created_at}>
+                    {formatDate(c.created_at)}
+                  </time>
+                </header>
                 {editing === c.id ? (
                   <SaveForm
-                    submit="수정 저장"
+                    className="comment-compose"
+                    submit={
+                      <span role="img" aria-label="수정 저장">
+                        <Check size={16} />
+                      </span>
+                    }
                     onSubmit={async (f) => {
                       await mutate(
                         path,
@@ -82,34 +101,46 @@ export function PostComments({
                       maxLength={1500}
                       defaultValue={c.body}
                     />
-                    <button type="button" onClick={() => setEditing("")}>
-                      취소
+                    <button
+                      type="button"
+                      className="post-tool"
+                      aria-label="수정 취소"
+                      title="수정 취소"
+                      onClick={() => setEditing("")}
+                    >
+                      <X size={16} />
                     </button>
                   </SaveForm>
                 ) : (
                   <p>{c.body}</p>
                 )}
-                <div className="button-row">
+                <div className="comment-tools">
                   {!parent && (
                     <button
-                      className="text-button"
+                      className="post-tool"
+                      aria-label="답글 보기 · 쓰기"
+                      title="답글 보기 · 쓰기"
                       aria-expanded={expanded === c.id}
                       onClick={() => setExpanded(expanded === c.id ? "" : c.id)}
                     >
-                      답글 보기 · 쓰기
+                      <MessageCircle size={15} />
                     </button>
                   )}
                   {c.mine && (
                     <button
-                      className="text-button"
+                      className="post-tool"
+                      aria-label="댓글 수정"
+                      title="댓글 수정"
                       onClick={() => setEditing(c.id)}
                     >
-                      수정
+                      <Pencil size={15} />
                     </button>
                   )}
                   {(c.mine || boot.role === "admin") && (
                     <button
-                      className="text-button"
+                      className="post-tool danger-text"
+                      aria-label="댓글 삭제"
+                      title="댓글 삭제"
                       onClick={async () => {
                         if (!confirm("댓글을 삭제할까요?")) return;
                         try {
@@ -120,7 +151,7 @@ export function PostComments({
                         }
                       }}
                     >
-                      삭제
+                      <Trash2 size={15} />
                     </button>
                   )}
                 </div>

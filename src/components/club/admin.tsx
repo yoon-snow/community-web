@@ -10,6 +10,10 @@ import {
   CheckCircle2,
   ChevronRight,
   ClipboardList,
+  Pin,
+  PinOff,
+  Pencil,
+  Trash2,
   Download,
   FileUp,
   Play,
@@ -1778,9 +1782,12 @@ export function AdminNotices() {
           notice={selected}
           close={() => setSelected(null)}
           actions={
-            <div className="button-row">
+            <div className="post-tools" role="group" aria-label="게시글 관리">
               <button
-                className="button secondary compact"
+                className="post-tool"
+                aria-label={selected.pinned ? "고정 해제" : "상단 고정"}
+                title={selected.pinned ? "고정 해제" : "상단 고정"}
+                aria-pressed={Boolean(selected.pinned)}
                 disabled={saving}
                 onClick={async () => {
                   const post = selected;
@@ -1803,17 +1810,45 @@ export function AdminNotices() {
                   }
                 }}
               >
-                {selected.pinned ? "고정 해제" : "상단 고정"}
+                {selected.pinned ? <PinOff size={16} /> : <Pin size={16} />}
               </button>
               <button
-                className="button secondary compact"
+                className="post-tool"
+                aria-label="게시글 수정"
+                title="게시글 수정"
                 disabled={saving}
                 onClick={() => {
                   setEdit(selected);
                   setSelected(null);
                 }}
               >
-                게시글 수정
+                <Pencil size={16} />
+              </button>
+              <button
+                className="post-tool danger-text"
+                title="게시글 삭제"
+                aria-label="게시글 삭제"
+                disabled={saving}
+                onClick={async () => {
+                  if (
+                    !confirm("이 게시글을 삭제할까요? 게시판에서 숨겨집니다.")
+                  )
+                    return;
+                  setSaving(true);
+                  try {
+                    await mutate("admin/delete", {
+                      resource: "announcements",
+                      id: selected.id,
+                    });
+                    setSelected(null);
+                  } catch (e) {
+                    toast((e as Error).message);
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+              >
+                <Trash2 size={16} />
               </button>
             </div>
           }

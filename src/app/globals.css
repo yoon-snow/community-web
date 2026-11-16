@@ -2704,3 +2704,20 @@ button.emergency { width: 100%; text-align: left; }
 .post-comments h3 { font-size: 15px; }
 .reply-thread { margin: 10px 0 0 8px; padding-inline-start: 12px; }
 .reply-thread .post-comment > p { font-size: 13px; }
+
+.notice-body { justify-items: stretch; }
+.post-byline { flex-wrap: wrap; }
+.post-tools, .comment-tools { display: flex; align-items: center; }
+.post-tools { margin-inline-start: auto; }
+.post-tool { display: inline-grid; place-items: center; width: 40px; height: 40px; background: transparent; color: var(--secondary-ink); border: 0; border-radius: 10px; cursor: pointer; }
+.post-tool[aria-pressed="true"], .post-tool[aria-expanded="true"] { color: var(--text); background: var(--folder-surface); }
+.post-tool.danger-text { color: var(--red); }
+.notice-body .post-content-panel { border: 1px solid var(--border); border-radius: 14px; background: var(--card); color: var(--text); padding: 18px; line-height: 1.75; min-width: 0; }
+.comment-author { display:flex; align-items:center; gap:7px; font-size:12px; }
+.comment-author .avatar { width:26px; height:26px; min-width:26px; font-size:11px; }
+.comment-author time { margin-inline-start:auto; font-size:11px; color:var(--secondary-ink); }
+.comment-tools { justify-content:flex-end; }
+.post-comments .comment-compose { display:flex; align-items:flex-end; gap:6px; flex-wrap:wrap; }
+.post-comments .comment-compose textarea { flex:1; min-width:110px; }
+.post-comments .comment-compose .button { width:40px; height:40px; min-height:40px; padding:0; }
+.comment-compose .form-error { flex-basis:100%; }

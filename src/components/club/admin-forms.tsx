@@ -382,7 +382,6 @@ export function NoticeEditor({
           </Resource>
         </details>
       )}
-      {n && <DeleteButton resource="announcements" id={n.id} done={close} />}
     </Modal>
   );
 }

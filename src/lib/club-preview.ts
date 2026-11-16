@@ -142,6 +142,7 @@ export function previewResource(path: string, boot: ClubRow) {
         : [
             {
               id: "demo-comment",
+              author: { name: "라이트", avatar_url: null },
               body: "안내 확인했습니다. 코트에서 만나요!",
               mine: false,
               created_at: new Date().toISOString(),

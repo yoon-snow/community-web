@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { cleanText, uuid } from "@/lib/domain";
-import { serverClient, identity, HttpError } from "@/lib/supabase/server";
+import {
+  serverClient,
+  serviceClient,
+  identity,
+  HttpError,
+} from "@/lib/supabase/server";
 type Context = { params: Promise<{ id: string }> };
 const json = (value: unknown, status = 200) =>
   Response.json(value, {
@@ -50,9 +55,46 @@ async function handle(request: Request, ctx: Context) {
             .order("id")
             .range(page * 20, page * 20 + 20),
         ) || [];
+      const visible = rows.slice(0, 20);
+      const profiles = new Map<
+        string,
+        { name: string; avatar_url: string | null }
+      >();
+      if (visible.length && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        // Resolve only authors of comments returned by the viewer's RLS-scoped query.
+        const service = serviceClient();
+        const { data: members } = await service
+          .from("members")
+          .select("id,user_id,name,avatar_path")
+          .eq("status", "active")
+          .in("user_id", [...new Set(visible.map((row) => row.author_id))]);
+        const paths = new Map<string, string>();
+        for (const m of members || []) {
+          profiles.set(m.user_id, { name: m.name, avatar_url: null });
+          const path = m.avatar_path || "";
+          const directory = path.slice(0, path.lastIndexOf("/"));
+          if (
+            (directory === m.user_id || directory === "managed/" + m.id) &&
+            /^[a-f0-9-]+\.(jpeg|jpg|png|webp)$/i.test(
+              path.slice(path.lastIndexOf("/") + 1),
+            )
+          )
+            paths.set(path, m.user_id);
+        }
+        if (paths.size) {
+          const signed = await service.storage
+            .from("avatars")
+            .createSignedUrls([...paths.keys()], 600);
+          for (const item of signed.data || []) {
+            const profile = profiles.get(paths.get(item.path || "") || "");
+            if (profile && item.signedUrl) profile.avatar_url = item.signedUrl;
+          }
+        }
+      }
       return json({
-        rows: rows.slice(0, 20).map(({ author_id, ...row }) => ({
+        rows: visible.map(({ author_id, ...row }) => ({
           ...row,
+          author: profiles.get(author_id) || { name: "회원", avatar_url: null },
           mine: author_id === who.user!.id,
         })),
         more: rows.length > 20,
