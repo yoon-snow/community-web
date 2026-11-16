@@ -177,7 +177,7 @@ test("S-Core Dream loads locally and role picker opens the corresponding home/na
   await expect(
     page
       .getByRole("navigation", { name: "주 메뉴" })
-      .getByRole("link", { name: "공지", exact: true }),
+      .getByRole("link", { name: "게시판", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: /우리의 배구가/ }),

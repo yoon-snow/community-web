@@ -1737,7 +1737,7 @@ export function AdminNotices() {
             ? "게스트 공개 공지"
             : audience === "member"
               ? "회원 공지"
-              : "공지 · 긴급공지"
+              : "게시판 관리"
         }
         action={
           <button

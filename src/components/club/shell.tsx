@@ -9,6 +9,7 @@ import {
   CalendarDays,
   CheckCircle2,
   ClipboardList,
+  PanelsTopLeft,
   Home,
   Info,
   LogIn,
@@ -375,6 +376,7 @@ export default function ClubApp() {
         { href: "/admin/guests", label: "게스트", icon: Users },
         { href: "/admin/members", label: "회원", icon: UserRound },
         { href: "/admin/calendar", label: "일정", icon: CalendarDays },
+        { href: "/admin/notices", label: "게시판", icon: PanelsTopLeft },
         { href: "/admin/more", label: "더보기", icon: MoreHorizontal },
       ]
     : boot.member
@@ -382,14 +384,14 @@ export default function ClubApp() {
           { href: "/", label: "홈", icon: Home },
           { href: "/calendar", label: "일정", icon: CalendarDays },
           { href: "/attendance", label: "출석", icon: CheckCircle2 },
-          { href: "/notices", label: "게시판", icon: ClipboardList },
+          { href: "/notices", label: "게시판", icon: PanelsTopLeft },
           { href: "/account", label: "내 정보", icon: UserRound },
         ]
       : [
           { href: "/", label: "홈", icon: Home },
           { href: "/calendar", label: "일정", icon: CalendarDays },
           { href: "/apply", label: "신청", icon: ClipboardList },
-          { href: "/notices", label: "공지", icon: Bell },
+          { href: "/notices", label: "게시판", icon: PanelsTopLeft },
         ];
   return (
     <Context.Provider value={context}>
