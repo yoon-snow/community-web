@@ -2622,7 +2622,7 @@ test("support tickets isolate owners, snapshot FAQs, target one admin and notify
 test("event votes disclose only active members' names and responses to approved members", async () => {
   const query = "select public.member_event_votes($1) as votes";
   await assert.rejects(as("anon", null, query, [event]));
-  await assert.rejects(as("authenticated", "55555555-5555-4555-8555-555555555555", query, [event]));
+  await assert.rejects(as("authenticated", require("node:crypto").randomUUID(), query, [event]));
   const { rows } = await memberQuery(query, [event]);
   assert.ok(rows[0].votes.some(v => v.name === "회원"));
   assert.ok(rows[0].votes.every(v => Object.keys(v).sort().join() === "name,response"));
