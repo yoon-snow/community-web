@@ -29,6 +29,7 @@ import {
   eventKinds,
   videoCategories,
   canApplyAsGuest,
+  guestDeadline,
   formatTime,
   noticeVersions,
   positions,
@@ -41,6 +42,7 @@ import {
 
 import {
   useApp,
+  useGuestDeadlines,
   useResource,
   Empty,
   Resource,
@@ -70,6 +72,7 @@ export function ApplicationForm({
   membership?: boolean;
 }) {
   const { boot, mutate, link, toast } = useApp();
+  useGuestDeadlines(membership ? [] : boot.events);
   const params = useSearchParams();
   const [step, setStep] = useState(0);
   const [values, setValues] = useState<ClubRow>({
@@ -194,6 +197,16 @@ export function ApplicationForm({
     setError("");
     if (!form.current?.reportValidity()) return;
     const latest = readForm();
+    if (!membership && step >= 2) {
+      const selected = boot.events.find((e: ClubEvent) => e.id === latest.event_id);
+      if (selected && guestDeadline(selected.starts_at) <= Date.now()) {
+        setError("운동 시작 1시간 전이라 신청이 마감됐어요. 다른 일정을 선택해주세요.");
+        setAgreements(null);
+        setValues((v) => ({ ...v, event_id: "", rules_consent: false, notice_consent: false }));
+        setStep(2);
+        return;
+      }
+    }
     if (!membership && step === 1 && !latest.position) {
       setError("희망 포지션을 하나 이상 선택해주세요.");
       return;
@@ -668,7 +681,7 @@ export function ApplicationForm({
             <>
               <Field
                 label={label("event_id", "참여할 운동")}
-                hint="오늘부터 2주 후까지의 운동을 선택할 수 있습니다."
+                hint="오늘부터 2주 후까지 신청할 수 있으며, 각 운동 시작 1시간 전에 마감됩니다."
                 name="event_id"
                 value={values.event_id}
                 required

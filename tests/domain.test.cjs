@@ -318,6 +318,10 @@ test("guest availability excludes cancelled, completed and holiday events while 
   };
   const today = new Date("2098-12-18T12:00:00Z");
   assert.equal(d.canApplyAsGuest(base,today), true);
+  const cutoff = Date.parse(base.starts_at) - 3600000;
+  assert.equal(d.canApplyAsGuest(base, new Date(cutoff - 1)), true);
+  assert.equal(d.canApplyAsGuest(base, new Date(cutoff)), false);
+  assert.equal(d.canApplyAsGuest(base, new Date(cutoff + 1)), false);
   assert.equal(d.canApplyAsGuest({...base,starts_at:"2099-01-02T01:00:00Z"},today),false);
   for (const patch of [
     { kind: "holiday" },

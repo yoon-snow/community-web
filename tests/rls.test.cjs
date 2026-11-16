@@ -2638,3 +2638,17 @@ test("support tickets isolate owners, snapshot FAQs, target one admin and notify
   assert.ok(row.faq_question);
   assert.ok(row.last_reply_at);
 });
+
+test("guest submission rejects a scheduled open workout at the one-hour cutoff", async () => {
+  const workout = (await adminQuery(
+    "insert into public.events(title,starts_at,ends_at,location,kind,guests_open) values('마감 검증',clock_timestamp()+interval '1 hour',now()+interval '4 hours','체육관','game',true) returning id",
+  )).rows[0];
+  const input = await currentGuestInput({ event_id: workout.id });
+  await assert.rejects(
+    as("service_role", null, "select public.submit_guest_receipt($1::jsonb,$2)", [
+      JSON.stringify(input), "guest-hour-boundary",
+    ]),
+    /guest application deadline passed/,
+  );
+  assert.equal((await adminQuery("select id from public.guest_applications where event_id=$1", [workout.id])).rows.length, 0);
+});

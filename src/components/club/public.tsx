@@ -35,6 +35,7 @@ import {
 
 import {
   useApp,
+  useGuestDeadlines,
   useResource,
   Empty,
   Resource,
@@ -486,6 +487,7 @@ export function CalendarScreen() {
   const resource = snapshot
     ? { data: snapshot, loading: false, error: "" }
     : remote;
+  useGuestDeadlines(resource.data || []);
   const days = useMemo(() => {
     const groups = new Map<string, ClubEvent[]>();
     for (const event of resource.data || []) {
@@ -708,6 +710,7 @@ export function CalendarScreen() {
 export function EventScreen({ id }: { id: string }) {
   const { boot, link, screen } = useApp();
   const resource = useResource(`events/${id}`);
+  useGuestDeadlines(resource.data?.event ? [resource.data.event] : []);
   return (
     <>
       <Back
@@ -957,6 +960,7 @@ export function GuestGuide() {
   const params = useSearchParams();
   const event = params.get("event");
   const resource = useResource(event ? `guest-guidance?event=${event}` : null);
+  useGuestDeadlines(resource.data?.event ? [resource.data.event] : []);
   return (
     <>
       <Back href={event ? `/events/${event}` : "/calendar"} label="운동 일정" />

@@ -1626,6 +1626,8 @@ async function handle(
       );
     const code = (e as { code?: string }).code;
     const message = (e as Error).message || "";
+    if (message === "guest application deadline passed")
+      return json({ error: "운동 시작 1시간 전이라 게스트 신청이 마감됐어요." }, 409);
     if (/name approval required/.test(message))
       return json(
         { error: "이름은 변경 요청을 제출한 뒤 관리자 승인을 받아야 합니다." },

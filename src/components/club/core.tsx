@@ -19,12 +19,32 @@ import {
   X,
   AlertCircle,
 } from "lucide-react";
-import { type ClubRow } from "@/lib/domain";
+import { guestDeadline, type ClubRow } from "@/lib/domain";
 
 export const Context = createContext<any>(null);
 
 export function useApp() {
   return useContext(Context);
+}
+
+// Re-render when the next displayed guest application closes, including after a phone wakes.
+export function useGuestDeadlines(events: { starts_at: string }[]) {
+  const now = Date.now();
+  const next = events.reduce((nearest, event) => {
+    const deadline = guestDeadline(event.starts_at);
+    return deadline > now ? Math.min(nearest, deadline) : nearest;
+  }, Infinity);
+  const [tick, wake] = useState(0);
+  useEffect(() => {
+    if (!Number.isFinite(next)) return;
+    const update = () => wake((value) => value + 1);
+    const timer = window.setTimeout(update, Math.min(2147483647, Math.max(0, next - Date.now())));
+    document.addEventListener("visibilitychange", update);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", update);
+    };
+  }, [next, tick]);
 }
 
 export async function api(path: string, options?: RequestInit) {

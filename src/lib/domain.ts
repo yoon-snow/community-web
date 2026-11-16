@@ -350,6 +350,9 @@ export function noticeVersions(
 ): Record<string, number> {
   return Object.fromEntries(rows.map((n) => [n.id, n.version || 1]));
 }
+export function guestDeadline(startsAt: string): number {
+  return Date.parse(startsAt) - 60 * 60 * 1000;
+}
 export function canApplyAsGuest(event: ClubEvent, now = new Date()): boolean {
   return (
     event.guests_open &&
@@ -357,7 +360,7 @@ export function canApplyAsGuest(event: ClubEvent, now = new Date()): boolean {
     guestCalendarKind(event.kind) &&
     seoulDate(event.starts_at) <=
       seoulDate(new Date(now.getTime() + 14 * 86400000)) &&
-    new Date(event.starts_at) > now
+    guestDeadline(event.starts_at) > now.getTime()
   );
 }
 export function guestAvailability(event: ClubEvent): string {
@@ -365,9 +368,11 @@ export function guestAvailability(event: ClubEvent): string {
     ? "운동 취소"
     : event.kind === "holiday"
       ? "휴무"
-      : event.status === "completed" || new Date(event.starts_at) <= new Date()
+      : event.status === "completed" || Date.parse(event.starts_at) <= Date.now()
         ? "신청 마감"
-        : event.guests_open &&
+        : guestDeadline(event.starts_at) <= Date.now()
+          ? "신청 마감 · 운동 시작 1시간 전"
+          : event.guests_open &&
             guestCalendarKind(event.kind) &&
             !canApplyAsGuest(event)
           ? "2주 전부터 신청 가능"
