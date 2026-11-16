@@ -264,7 +264,7 @@ export function NoticeEditor({
   const { mutate } = useApp();
   const history = useResource(n ? `admin/notices/${n.id}/versions` : null);
   return (
-    <Modal title={n ? "공지 수정" : "새 공지"} close={close}>
+    <Modal title={n ? "게시글 수정" : "새 게시글"} close={close}>
       <SaveForm
         submit={n ? "수정 저장" : "게시하기"}
         onSubmit={async (f) => {
@@ -310,21 +310,35 @@ export function NoticeEditor({
             </option>
           ))}
         </Field>
-        <Field
-          label="공개 대상"
-          name="audience"
-          value={n?.audience || defaultAudience}
-        >
-          {[
-            { value: "public", label: "전체 공개" },
-            { value: "member", label: "회원" },
-            { value: "admin", label: "운영진" },
-          ].map((i) => (
-            <option key={i.value} value={i.value}>
-              {i.label}
-            </option>
-          ))}
-        </Field>
+        {!n ? (
+          <p className="micro">
+            공개 대상 ·{" "}
+            {
+              {
+                public: "전체 공개 (게스트 소식·공지)",
+                member: "회원 전용",
+                admin: "운영진 전용",
+              }[defaultAudience]
+            }
+            <input type="hidden" name="audience" value={defaultAudience} />
+          </p>
+        ) : (
+          <Field
+            label="공개 대상"
+            name="audience"
+            value={n?.audience || defaultAudience}
+          >
+            {[
+              { value: "public", label: "전체 공개" },
+              { value: "member", label: "회원" },
+              { value: "admin", label: "운영진" },
+            ].map((i) => (
+              <option key={i.value} value={i.value}>
+                {i.label}
+              </option>
+            ))}
+          </Field>
+        )}
         <details className="post-options">
           <summary>예약 게시 · 게시 종료 설정</summary>
           <Field

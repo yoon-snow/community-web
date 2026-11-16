@@ -52,7 +52,7 @@ import {
   Pagination,
   paymentLabel,
 } from "./core";
-import { Emergency, EventCard, NoticeCard } from "./public";
+import { Emergency, EventCard, NoticeCard, NoticeDialog } from "./public";
 import dynamic from "next/dynamic";
 import { Loader } from "./core";
 const ExportSheet = dynamic(
@@ -1722,23 +1722,18 @@ export function MemberPicker({
 }
 
 export function AdminNotices() {
-  const { mutate, toast } = useApp();
+  const { mutate, toast, link } = useApp();
   const [saving, setSaving] = useState(false);
+  const [selected, setSelected] = useState<ClubRow | null>(null);
   const scope = useSearchParams().get("scope");
   const audience =
-    scope === "guest" ? "public" : scope === "member" ? "member" : "";
-  const resource = useResource("admin/notices");
+    scope === "member" ? "member" : scope === "admin" ? "admin" : "public";
+  const resource = useResource("admin/notices?audience=" + audience);
   const [edit, setEdit] = useState<ClubRow | boolean>(false);
   return (
     <>
       <PageTitle
-        title={
-          audience === "public"
-            ? "게스트 공개 공지"
-            : audience === "member"
-              ? "회원 공지"
-              : "게시판 관리"
-        }
+        title="게시판 관리"
         action={
           <button
             className="button primary compact"
@@ -1749,46 +1744,81 @@ export function AdminNotices() {
           </button>
         }
       />
+      <nav className="chips" aria-label="관리할 게시판">
+        {Object.entries({
+          guest: "게스트 소식·공지",
+          member: "회원 게시판",
+          admin: "운영진 전용",
+        }).map(([key, label]) => (
+          <Link
+            key={key}
+            className={(scope || "guest") === key ? "selected" : ""}
+            aria-current={(scope || "guest") === key ? "page" : undefined}
+            href={link("/admin/notices?scope=" + key)}
+          >
+            {label}
+          </Link>
+        ))}
+      </nav>
       <Resource resource={resource}>
-        {(all) => {
-          const rows = audience
-            ? all.filter((n: ClubRow) => n.audience === audience)
-            : all;
-          return rows.length ? (
+        {(rows) =>
+          rows.length ? (
             rows.map((n: ClubRow) => (
               <div key={n.id} className="board-list-row">
-                <NoticeCard notice={n} />
-                <button
-                  className="text-button"
-                  disabled={saving}
-                  aria-pressed={Boolean(n.pinned)}
-                  onClick={async () => {
-                    setSaving(true);
-                    try {
-                      await mutate(
-                        "admin/notice-pin",
-                        { id: n.id, pinned: !n.pinned },
-                        "PATCH",
-                      );
-                    } catch (error) {
-                      toast((error as Error).message);
-                    } finally {
-                      setSaving(false);
-                    }
-                  }}
-                >
-                  {n.pinned ? "고정 해제" : "상단 고정"}
-                </button>
-                <button className="text-button" onClick={() => setEdit(n)}>
-                  수정
-                </button>
+                <NoticeCard notice={n} onOpen={() => setSelected(n)} />
               </div>
             ))
           ) : (
-            <Empty icon={ClipboardList} title="첫 공지를 등록해주세요" />
-          );
-        }}
+            <Empty icon={ClipboardList} title="등록된 게시글이 없어요" />
+          )
+        }
       </Resource>
+      {selected && (
+        <NoticeDialog
+          notice={selected}
+          close={() => setSelected(null)}
+          actions={
+            <div className="button-row">
+              <button
+                className="button secondary compact"
+                disabled={saving}
+                onClick={async () => {
+                  const post = selected;
+                  setSaving(true);
+                  try {
+                    await mutate(
+                      "admin/notice-pin",
+                      { id: post.id, pinned: !post.pinned },
+                      "PATCH",
+                    );
+                    setSelected((current) =>
+                      current?.id === post.id
+                        ? { ...current, pinned: !post.pinned }
+                        : current,
+                    );
+                  } catch (e) {
+                    toast((e as Error).message);
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+              >
+                {selected.pinned ? "고정 해제" : "상단 고정"}
+              </button>
+              <button
+                className="button secondary compact"
+                disabled={saving}
+                onClick={() => {
+                  setEdit(selected);
+                  setSelected(null);
+                }}
+              >
+                게시글 수정
+              </button>
+            </div>
+          }
+        />
+      )}
       {edit && (
         <NoticeEditor
           defaultAudience={audience || "public"}

@@ -29,14 +29,26 @@ test("admins pin and unpin a notice on the member board", async ({ page }) => {
   const memberUrl = "/preview/notices?role=member";
   const row = page.locator(".board-list-row").filter({ hasText: title });
   await page.goto(adminUrl);
-  await row.getByRole("button", { name: "상단 고정", exact: true }).click();
-  await expect(row.getByRole("button", { name: "고정 해제" })).toBeVisible();
+  await row.locator(".notice-card").click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "상단 고정", exact: true })
+    .click();
+  await expect(
+    page.getByRole("dialog").getByRole("button", { name: "고정 해제" }),
+  ).toBeVisible();
   await page.goto(memberUrl);
   await expect(page.locator(".notice-card").first()).toContainText(title);
   await page.goto(adminUrl);
-  await row.getByRole("button", { name: "고정 해제" }).click();
+  await row.locator(".notice-card").click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "고정 해제" })
+    .click();
   await expect(
-    row.getByRole("button", { name: "상단 고정", exact: true }),
+    page
+      .getByRole("dialog")
+      .getByRole("button", { name: "상단 고정", exact: true }),
   ).toBeVisible();
   await page.goto(memberUrl);
   await expect(page.locator(".notice-card").first()).not.toContainText(title);

@@ -1353,7 +1353,7 @@ i.cancelled {
 .chips::-webkit-scrollbar {
   display: none;
 }
-.chips button {
+.chips :is(button, a) {
   flex: 0 0 auto;
   border: 1px solid #e2e5e9;
   background: #fff;
@@ -1364,7 +1364,7 @@ i.cancelled {
   min-height: 44px;
   color: #646e7e;
 }
-.chips button.selected {
+.chips :is(button, a).selected {
   background: var(--navy);
   border-color: var(--navy);
   color: #fff;
@@ -2191,12 +2191,12 @@ i.match {
 }
 [data-theme="dark"] .bottom-nav a.active > span,
 [data-theme="dark"] .calendar-grid button.selected,
-[data-theme="dark"] .chips button.selected,
+[data-theme="dark"] .chips :is(button, a).selected,
 [data-theme="dark"] .button.primary {
   background: #354f75;
   color: white;
 }
-[data-theme="dark"] .chips button,
+[data-theme="dark"] .chips :is(button, a),
 [data-theme="dark"] .stat,
 [data-theme="dark"] .hint {
   background: #192b45;
@@ -2687,3 +2687,20 @@ button.emergency { width: 100%; text-align: left; }
 .receipt-status svg { width: 18px; height: 18px; }
 .receipt-state h2 { font-size: 18px; margin: 14px 0 6px; }
 .receipt-state p { margin: 0 0 6px; }
+
+.chips a { display: inline-flex; align-items: center; text-decoration: none; }
+.board-list-row { padding: 0; }
+.notice-card > .post-heading { display: grid; justify-items: start; gap: 2px; }
+.post-heading strong { font-size: 16px; line-height: 1.4; }
+.post-heading time, .post-byline time { font-size: 11px; color: var(--secondary-ink); }
+.notice-dialog:has(.notice-body) .sheet-heading { margin-bottom: 2px; }
+.notice-body { padding-top: 0; gap: 18px; }
+.post-byline { display: flex; align-items: center; gap: 8px; }
+.notice-body > p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.post-comment { padding: 14px 0; }
+.post-comment > small { font-size: 11px; color: var(--secondary-ink); }
+.post-comment > p { font-size: 14px; line-height: 1.6; margin: 5px 0; }
+.post-comment .text-button, .post-comments .button { font-size: 12px; }
+.post-comments h3 { font-size: 15px; }
+.reply-thread { margin: 10px 0 0 8px; padding-inline-start: 12px; }
+.reply-thread .post-comment > p { font-size: 13px; }

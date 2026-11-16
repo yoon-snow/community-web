@@ -1292,17 +1292,12 @@ async function processRequest(request: Request, segments: string[]) {
     });
     return json({ ok: true });
   }
-  if (path === "admin/notices" && method === "GET")
-    return json(
-      checked(
-        await db
-          .from("announcements")
-          .select("*")
-          .is("deleted_at", null)
-          .order("created_at", { ascending: false })
-          .limit(200),
-      ),
-    );
+  if (path === "admin/notices" && method === "GET") {
+    let query = db.from("announcements").select("*").is("deleted_at", null);
+    const audience = url.searchParams.get("audience");
+    if (audience) query = query.eq("audience", z.enum(["member","public","admin"]).parse(audience));
+    return json(checked(await query.order("pinned", {ascending:false}).order("created_at", {ascending:false}).limit(200)));
+  }
   if (
     segments[0] === "admin" &&
     segments[1] === "notices" &&

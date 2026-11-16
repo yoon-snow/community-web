@@ -815,18 +815,23 @@ export function EventScreen({ id }: { id: string }) {
   );
 }
 
-export function NoticeCard({ notice }: { notice: ClubRow }) {
+export function NoticeCard({
+  notice,
+  onOpen,
+}: {
+  notice: ClubRow;
+  onOpen?: () => void;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button className="notice-card" onClick={() => setOpen(true)}>
+      <button className="notice-card" onClick={onOpen || (() => setOpen(true))}>
         <span className="feed-meta">
           <span className="feed-avatar" aria-hidden="true">
             <Volleyball size={18} />
           </span>
           <span>
             <b>SpotLight 운영진</b>
-            <small>{formatDate(notice.created_at)}</small>
           </span>
           <Badge
             tone={
@@ -850,7 +855,12 @@ export function NoticeCard({ notice }: { notice: ClubRow }) {
           </Badge>
         </span>
         {notice.pinned && <Badge tone="gold">상단 고정</Badge>}
-        <strong>{notice.title}</strong>
+        <span className="post-heading">
+          <strong>{notice.title}</strong>
+          <time dateTime={notice.created_at}>
+            {formatDate(notice.created_at)}
+          </time>
+        </span>
         <span className="feed-excerpt">{notice.content}</span>
         <span className="feed-open">
           게시글 보기 <ChevronRight size={14} />
@@ -861,30 +871,32 @@ export function NoticeCard({ notice }: { notice: ClubRow }) {
   );
 }
 
-function NoticeDialog({
+export function NoticeDialog({
   notice,
   close,
+  actions,
 }: {
+  actions?: React.ReactNode;
   notice: ClubRow;
   close: () => void;
 }) {
   return (
     <Modal centered title={notice.title} close={close}>
       <div className="prose notice-body">
-        <p className="micro">
-          공지 버전 v{notice.version || 1} ·{" "}
-          {notice.updated_at
-            ? formatDate(notice.updated_at)
-            : formatDate(notice.created_at)}
-        </p>
-        <Badge>
-          {notice.audience === "public"
-            ? "전체 공개"
-            : notice.audience === "admin"
-              ? "운영진"
-              : "회원"}
-        </Badge>
+        <div className="post-byline">
+          <time dateTime={notice.created_at}>
+            {formatDate(notice.created_at)}
+          </time>
+          <Badge>
+            {notice.audience === "public"
+              ? "전체 공개"
+              : notice.audience === "admin"
+                ? "운영진"
+                : "회원"}
+          </Badge>
+        </div>
         <p>{notice.content}</p>
+        {actions}
       </div>
       <PostComments post={notice.id} />
     </Modal>

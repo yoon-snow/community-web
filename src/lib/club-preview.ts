@@ -149,11 +149,23 @@ export function previewResource(path: string, boot: ClubRow) {
           ],
       more: false,
     };
-  if (path === "admin/notices" || path.startsWith("notices?")) {
+  if (
+    path.startsWith("admin/notices?") ||
+    path === "admin/notices" ||
+    path.startsWith("notices?")
+  ) {
     const announcements = boot.announcements.map((n: ClubRow) => ({
       ...n,
       pinned: demoSetting("pin", n.id) === "true",
     }));
+    if (path.startsWith("admin/notices?"))
+      return announcements
+        .filter(
+          (n: ClubRow) =>
+            n.audience ===
+            new URLSearchParams(path.split("?")[1]).get("audience"),
+        )
+        .sort((a: ClubRow, b: ClubRow) => Number(b.pinned) - Number(a.pinned));
     return baseResource(path, { ...boot, announcements });
   }
   return baseResource(path, boot);
