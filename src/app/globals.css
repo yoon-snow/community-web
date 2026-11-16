@@ -1305,6 +1305,28 @@ i.cancelled {
   display: block;
   line-height: 1.7;
 }
+.member-list-name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  overflow-wrap: anywhere;
+}
+.member-gender {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eef0f3;
+  color: #4b5565;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.member-gender[data-gender="여성"] { background: #f0ebfa; color: #59417c; }
+.member-gender[data-gender="남성"] { background: #e4f2f2; color: #285a5c; }
+[data-theme="dark"] .member-gender { background: #334155; color: #e2e8f0; }
+[data-theme="dark"] .member-gender[data-gender="여성"] { background: #42354f; color: #ecdcff; }
+[data-theme="dark"] .member-gender[data-gender="남성"] { background: #234448; color: #c6f3f0; }
 .list-card small {
   display: block;
   font-size: 10px;

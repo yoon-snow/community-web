@@ -807,9 +807,14 @@ export function AdminMembers() {
               >
                 <Avatar member={m} />
                 <div>
-                  <strong>{m.name}</strong>
+                  <div className="member-list-name">
+                    <strong>{m.name}</strong>
+                    <span className="member-gender" data-gender={m.gender?.trim()}>
+                      {m.gender?.trim() || "성별 미입력"}
+                    </span>
+                  </div>
                   <small>
-                    {m.gender?.trim() || "성별 미입력"} · {m.position || "미정"} ·{" "}
+                    {m.position || "미정"} ·{" "}
                     {m.admins?.titles?.join(" · ") || "회원"}
                   </small>
                 </div>
