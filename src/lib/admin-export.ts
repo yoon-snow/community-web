@@ -44,9 +44,10 @@ export async function collectAdminExport(
     .enum(["guests", "members", "attendance", "dues", "events"])
     .parse(url.searchParams.get("resource"));
   const format = z
-    .enum(["csv", "xlsx", "image"])
+    .enum(["csv", "xlsx", "image", "preview"])
     .parse(url.searchParams.get("format"));
-  if (format === "image" && resource !== "guests")
+  const roster = format === "image" || format === "preview";
+  if (roster && resource !== "guests")
     throw new HttpError(400, "게스트 명단만 이미지로 공유할 수 있습니다.");
   const table = {
     guests: "guest_applications",
@@ -57,8 +58,8 @@ export async function collectAdminExport(
   }[resource];
   const selection = {
     guests:
-      format === "image"
-        ? "name:answers->>name,position:answers->>position,guests(name,position),guest_payments!inner(status)"
+      roster
+        ? "name:answers->>name,position:answers->>position,guests(name,position),guest_payments!inner(status)" + (format === "preview" ? ",birth_date:answers->>birth_date,experience:answers->>experience" : "")
         : "*,guests(name,phone,position),guest_payments!inner(status,amount),events(title,starts_at)",
     members: "*",
     attendance: "*,members(name),events!inner(title,starts_at)",
@@ -158,11 +159,12 @@ export async function collectAdminExport(
       await q.range(offset, offset + 499),
     ) as unknown as Record<string, unknown>[];
     for (const r of result) {
-      if (format === "image") {
+      if (roster) {
         const guest = r.guests as Record<string, unknown> | null;
         rows.push({
           name: String(r.name || guest?.name || "이름 미입력"),
           position: String(r.position || guest?.position || "미정"),
+          ...(format === "preview" && { birth_date: r.birth_date || "", experience: r.experience || "" }),
         });
         continue;
       }
@@ -189,7 +191,7 @@ export async function exportData(
   url: URL,
 ) {
   const { resource, format, rows } = await collectAdminExport(db, url);
-  if (format === "image") return Response.json(rows, { headers });
+  if (format === "image" || format === "preview") return Response.json(rows, { headers });
   const columns = Array.from(new Set(rows.flatMap(Object.keys)));
   if (format === "csv")
     return new Response(csvSerialize(rows, columns), {

@@ -512,7 +512,8 @@ export function RosterScreen() {
   );
 }
 
-async function loadGuestImages(filters: string, boot: ClubRow) {
+type GuestPreviewRow = { name: string; position: string; birth_date?: string; experience?: string };
+async function loadGuestRows(filters: string, boot: ClubRow, detailed = false): Promise<GuestPreviewRow[]> {
   let rows;
   if (boot.preview) {
     const { previewResource } = await import("@/lib/club-preview");
@@ -526,11 +527,12 @@ async function loadGuestImages(filters: string, boot: ClubRow) {
       (g: ClubRow) => ({
         name: g.answers?.name || g.guests?.name,
         position: g.answers?.position || g.guests?.position,
+        ...(detailed && { birth_date: g.answers?.birth_date, experience: g.answers?.experience }),
       }),
     );
   } else {
     const result = await fetch(
-      "/api/club/admin/export?resource=guests&format=image&" +
+      `/api/club/admin/export?resource=guests&format=${detailed ? "preview" : "image"}&` +
         filters,
       { cache: "no-store" },
     );
@@ -543,7 +545,12 @@ async function loadGuestImages(filters: string, boot: ClubRow) {
     throw new Error(
       "이미지는 한 번에 500명까지 만들 수 있어요. 기간을 좁혀주세요.",
     );
-  return (await import("./guest-share-image")).guestImages(rows);
+  return rows;
+}
+
+async function shareableImages(rows: GuestPreviewRow[]) {
+  const { guestImages } = await import("./guest-share-image");
+  return guestImages(rows.map(({ name, position }) => ({ name, position })));
 }
 
 function GuestImagePreview({file, index}: {file: File; index: number}) {
@@ -568,6 +575,7 @@ export function ExportSheet({
   close: () => void;
 }) {
   const { boot } = useApp();
+  const [details, setDetails] = useState<GuestPreviewRow[]>([]);
   const [images, setImages] = useState<File[]>([]);
   const [format, setFormat] = useState("xlsx");
   const [filtered, setFiltered] = useState(true);
@@ -577,7 +585,15 @@ export function ExportSheet({
     if (!previewOnly) return;
     let active = true;
     setBusy(true);
-    loadGuestImages(query, boot)
+    setError("");
+    setDetails([]);
+    setImages([]);
+    loadGuestRows(query, boot, true)
+      .then(rows => {
+        if (!active) return [];
+        setDetails(rows);
+        return shareableImages(rows);
+      })
       .then(files => { if (active) setImages(files); })
       .catch(e => { if (active) setError(e.message); })
       .finally(() => { if (active) setBusy(false); });
@@ -586,6 +602,18 @@ export function ExportSheet({
   return (
     <Modal title={previewOnly ? "게스트 명단 미리보기" : "내보내기"} close={close}>
       {previewOnly && busy && <p role="status">명단 이미지를 준비하고 있어요.</p>}
+      {previewOnly && details.length > 0 && (
+        <section className="card guest-review">
+          <h2>운영진 확인용 · {details.length}명</h2>
+          <ul>{details.map((guest, index) => (
+            <li key={index}>
+              <strong>{guest.name || "이름 미입력"}</strong>
+              <span>{guest.position || "포지션 미정"}</span>
+              <small>생년월일 {guest.birth_date || "미입력"} · 경력 {guest.experience || "미입력"}</small>
+            </li>
+          ))}</ul>
+        </section>
+      )}
       {!previewOnly && <>
       <p className="hint">
         관리자 전용 파일입니다. 개인정보 취급에 주의해주세요.
@@ -638,7 +666,7 @@ export function ExportSheet({
           setError("");
           try {
             if (format === "image") {
-              setImages(await loadGuestImages(filtered ? query : "", boot));
+              setImages(await shareableImages(await loadGuestRows(filtered ? query : "", boot)));
               return;
             }
             if (boot.preview)
@@ -670,6 +698,7 @@ export function ExportSheet({
           카카오톡과 임원진 채팅방을 선택하세요.
         </p>
       )}
+      {previewOnly && images.length > 0 && <h3>공유용 이미지 · 이름과 포지션</h3>}
       {images.map((file, i) => (
         <div key={file.name}>
           <GuestImagePreview file={file} index={i} />

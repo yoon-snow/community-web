@@ -21,7 +21,6 @@ import {
   ShieldCheck,
   Shirt,
   UserRound,
-  Volleyball,
   Wallet,
   BookOpen,
 } from "lucide-react";
@@ -1735,31 +1734,12 @@ export function VideoDetailScreen({
           v ? (
             <>
               <PageTitle title={v.title} />
-              <div className="card video-card">
-                <div className="video-thumbnail">
-                  {v.thumbnail ? (
-                    <img src={v.thumbnail} alt={`${v.title} 썸네일`} />
-                  ) : (
-                    <Volleyball size={56} />
-                  )}
-                </div>
-                <div className="video-info">
-                  <Badge tone={v.kind}>{videoCategories[v.kind]}</Badge>
-                  <p>
-                    {formatDate(v.filmed_on + "T12:00:00+09:00")}
-                    {v.date_source === "registered" ? " 등록" : ""}
-                  </p>
-                  {v.entry_type === "playlist" && (
-                    <p>
-                      {v.video_count == null
-                        ? "영상 수 미등록"
-                        : `${v.video_count} Videos`}
-                    </p>
-                  )}
-                </div>
-              </div>
               <div className="card prose">
-                <h2>영상 안내</h2>
+                <p>
+                  {videoCategories[v.kind]} · {formatDate(v.filmed_on + "T12:00:00+09:00")}
+                  {v.date_source === "registered" ? " 등록" : " 촬영"}
+                  {v.entry_type === "playlist" && v.video_count != null && ` · 영상 ${v.video_count}개`}
+                </p>
                 <p style={{ whiteSpace: "pre-wrap" }}>
                   {v.description || "등록된 설명이 없습니다."}
                 </p>
