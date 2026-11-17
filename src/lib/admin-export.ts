@@ -126,7 +126,9 @@ export async function collectAdminExport(
         status,
       );
     const event = url.searchParams.get("event");
-    if (event && ["guests", "attendance"].includes(resource))
+    if (resource === "guests" && event)
+      q = q.in("event_id", url.searchParams.getAll("event").map(id => uuid.parse(id)));
+    else if (event && resource === "attendance")
       q = q.eq("event_id", uuid.parse(event));
     const response = url.searchParams.get("response");
     if (resource === "attendance" && response && response !== "all")

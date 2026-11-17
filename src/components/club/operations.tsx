@@ -512,13 +512,59 @@ export function RosterScreen() {
   );
 }
 
+async function loadGuestImages(filters: string, boot: ClubRow) {
+  let rows;
+  if (boot.preview) {
+    const { previewResource } = await import("@/lib/club-preview");
+    const params = new URLSearchParams(filters);
+    const month = params.get("month");
+    if (month) {
+      params.set("from", month + "-01");
+      params.set("to", month + "-31");
+    }
+    rows = previewResource("admin/guests?" + params, boot).rows.map(
+      (g: ClubRow) => ({
+        name: g.answers?.name || g.guests?.name,
+        position: g.answers?.position || g.guests?.position,
+      }),
+    );
+  } else {
+    const result = await fetch(
+      "/api/club/admin/export?resource=guests&format=image&" +
+        filters,
+      { cache: "no-store" },
+    );
+    if (!result.ok) throw new Error("명단을 불러오지 못했어요.");
+    rows = await result.json();
+  }
+  if (!rows.length)
+    throw new Error("선택한 조건에 해당하는 신청이 없어요.");
+  if (rows.length > 500)
+    throw new Error(
+      "이미지는 한 번에 500명까지 만들 수 있어요. 기간을 좁혀주세요.",
+    );
+  return (await import("./guest-share-image")).guestImages(rows);
+}
+
+function GuestImagePreview({file, index}: {file: File; index: number}) {
+  const [url, setUrl] = useState("");
+  useEffect(() => {
+    const src = URL.createObjectURL(file);
+    setUrl(src);
+    return () => URL.revokeObjectURL(src);
+  }, [file]);
+  return url ? <img className="guest-image-preview" src={url} alt={`게스트 명단 미리보기 ${index + 1}`} /> : null;
+}
+
 export function ExportSheet({
   resource,
   query = "",
+  previewOnly = false,
   close,
 }: {
   resource: string;
   query?: string;
+  previewOnly?: boolean;
   close: () => void;
 }) {
   const { boot } = useApp();
@@ -527,8 +573,20 @@ export function ExportSheet({
   const [filtered, setFiltered] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  useEffect(() => {
+    if (!previewOnly) return;
+    let active = true;
+    setBusy(true);
+    loadGuestImages(query, boot)
+      .then(files => { if (active) setImages(files); })
+      .catch(e => { if (active) setError(e.message); })
+      .finally(() => { if (active) setBusy(false); });
+    return () => { active = false; };
+  }, [previewOnly, query, boot]);
   return (
-    <Modal title="내보내기" close={close}>
+    <Modal title={previewOnly ? "게스트 명단 미리보기" : "내보내기"} close={close}>
+      {previewOnly && busy && <p role="status">명단 이미지를 준비하고 있어요.</p>}
+      {!previewOnly && <>
       <p className="hint">
         관리자 전용 파일입니다. 개인정보 취급에 주의해주세요.
       </p>
@@ -566,12 +624,13 @@ export function ExportSheet({
         />
         <span>현재 필터 포함</span>
       </label>
+      </>}
       {error && (
         <p className="form-error" role="alert">
           {error}
         </p>
       )}
-      <button
+      {!previewOnly && <button
         className="button primary full"
         disabled={busy}
         onClick={async () => {
@@ -579,40 +638,7 @@ export function ExportSheet({
           setError("");
           try {
             if (format === "image") {
-              const filters = filtered ? query : "";
-              let rows;
-              if (boot.preview) {
-                const { previewResource } = await import("@/lib/club-preview");
-                const params = new URLSearchParams(filters);
-                const month = params.get("month");
-                if (month) {
-                  params.set("from", month + "-01");
-                  params.set("to", month + "-31");
-                }
-                rows = previewResource("admin/guests?" + params, boot).rows.map(
-                  (g: ClubRow) => ({
-                    name: g.answers.name,
-                    position: g.answers.position,
-                  }),
-                );
-              } else {
-                const result = await fetch(
-                  "/api/club/admin/export?resource=guests&format=image&" +
-                    filters,
-                  { cache: "no-store" },
-                );
-                if (!result.ok) throw new Error("명단을 불러오지 못했어요.");
-                rows = await result.json();
-              }
-              if (!rows.length)
-                throw new Error("선택한 조건에 해당하는 신청이 없어요.");
-              if (rows.length > 500)
-                throw new Error(
-                  "이미지는 한 번에 500명까지 만들 수 있어요. 기간을 좁혀주세요.",
-                );
-              setImages(
-                await (await import("./guest-share-image")).guestImages(rows),
-              );
+              setImages(await loadGuestImages(filtered ? query : "", boot));
               return;
             }
             if (boot.preview)
@@ -637,7 +663,7 @@ export function ExportSheet({
         }}
       >
         {busy ? "파일 생성 중…" : "파일 생성"}
-      </button>
+      </button>}
       {format === "image" && (
         <p className="hint">
           공유 이미지에는 이름과 희망 포지션만 표시합니다. 휴대폰 공유 메뉴에서
@@ -645,7 +671,9 @@ export function ExportSheet({
         </p>
       )}
       {images.map((file, i) => (
-        <div className="button-row" key={file.name}>
+        <div key={file.name}>
+          <GuestImagePreview file={file} index={i} />
+          <div className="button-row">
           <button
             className="button secondary"
             onClick={() => downloadBlob(file, file.name)}
@@ -671,6 +699,7 @@ export function ExportSheet({
           >
             이미지 공유 {i + 1}
           </button>
+          </div>
         </div>
       ))}
     </Modal>

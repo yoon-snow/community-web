@@ -629,6 +629,8 @@ async function processRequest(request: Request, segments: string[]) {
         "kind",
         z.enum(["game", "lesson", "match", "practice", "event"]).parse(kind),
       );
+    const tag = url.searchParams.get("tag");
+    if (tag) q = q.like("description", z.enum(["교류전","연습&게임","게임데이","대회"]).parse(tag) + "%");
     const year = url.searchParams.get("year");
     const month = url.searchParams.get("month");
     if (month && !year) throw new HttpError(400, "연도를 먼저 선택해주세요.");
@@ -663,6 +665,16 @@ async function processRequest(request: Request, segments: string[]) {
       .min(0)
       .max(10000)
       .parse(url.searchParams.get("page") || 0);
+    if (url.searchParams.get("view") === "calendar") {
+      if (!year || !month) throw new HttpError(400, "달력의 연월을 선택해주세요.");
+      const rows = [];
+      for (let offset = 0; ; offset += 500) {
+        const batch = checked(await q.range(offset, offset + 499)) || [];
+        rows.push(...batch);
+        if (batch.length < 500) break;
+      }
+      return json({ rows, total: rows.length });
+    }
     const result = await q.range(page * 24, page * 24 + 23);
     return json({ rows: checked(result), total: result.count });
   }
@@ -777,21 +789,22 @@ async function processRequest(request: Request, segments: string[]) {
         "guest_payments.status",
         z.enum(["paid", "pending"]).parse(status),
       );
-    const event = url.searchParams.get("event");
-    if (event) q = q.eq("event_id", uuid.parse(event));
+    const eventIds = [...new Set(url.searchParams.getAll("event").filter(Boolean).map(id => uuid.parse(id)))];
+    if (eventIds.length) q = q.in("event_id", eventIds);
     const page = Math.max(0, Number(url.searchParams.get("page") || 0));
     const result = await q.range(page * 30, page * 30 + 29);
-    const summary = checked(
-      await db.rpc("admin_guest_counts", {
-        p_event: event ? uuid.parse(event) : null,
-        p_from: url.searchParams.get("from")
-          ? dateOnly.parse(url.searchParams.get("from"))
-          : null,
-        p_to: url.searchParams.get("to")
-          ? dateOnly.parse(url.searchParams.get("to"))
-          : null,
-      }),
-    );
+    const counts = await Promise.all((eventIds.length ? eventIds : [null]).map(async id =>
+      checked(await db.rpc("admin_guest_counts", {
+        p_event: id,
+        p_from: url.searchParams.get("from") ? dateOnly.parse(url.searchParams.get("from")) : null,
+        p_to: url.searchParams.get("to") ? dateOnly.parse(url.searchParams.get("to")) : null,
+      }))
+    ));
+    const summary = counts.reduce((sum, row) => ({
+      applications: sum.applications + row.applications,
+      paid: sum.paid + row.paid,
+      pending: sum.pending + row.pending,
+    }), {applications: 0, paid: 0, pending: 0});
     return json({ rows: checked(result), total: result.count, summary });
   }
   if (

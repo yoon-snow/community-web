@@ -2746,3 +2746,17 @@ button.emergency { width: 100%; text-align: left; }
 
 .calendar-heading .calendar-today { min-width: 44px; min-height: 44px; }
 .form-notices + .application-form { margin-block-start: 16px; }
+
+.archive-views, .archive-month, .archive-tags { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.archive-views button, .archive-month button, .archive-month input { min-height:44px; padding:6px 14px; border:1px solid var(--border); border-radius:12px; background:var(--card); color:var(--text); }
+.archive-views button[aria-pressed="true"], .archive-grid button[aria-pressed="true"] { background:var(--text); color:var(--card); }
+.archive-month { justify-content:space-between; }
+.archive-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:3px; text-align:center; background:var(--card); border-radius:16px; border:1px solid var(--border); padding:12px 6px; }
+.archive-grid button { min-height:44px; border:0; border-radius:10px; background:var(--gold-light,#efe1b1); color:#302711; }
+.archive-grid button:disabled { background:transparent; color:var(--muted); }
+.archive-grid small { display:block; font-size:11px; padding:2px; }
+.archive-list-item { display:grid; gap:6px; padding:14px 16px; background:var(--card); border:1px solid var(--border); border-radius:14px; }
+.archive-list-item time { font-size:12px; color:var(--secondary-ink); }
+.archive-list-item a { font-weight:700; overflow-wrap:anywhere; }
+.archive-tags button { border:1px solid var(--border); border-radius:12px; font-size:12px; background:var(--card); color:var(--text); }
+.guest-image-preview { display:block; width:100%; height:auto; border-radius:12px; margin-block:12px; border:1px solid var(--border); }

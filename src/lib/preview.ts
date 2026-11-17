@@ -554,7 +554,7 @@ export function previewResource(path: string, boot: ClubRow): any {
   if (path.startsWith("admin/guests")) {
     const params = new URL(path, "https://preview.invalid/").searchParams;
     let scoped = guestRows.filter(
-      (g) => !params.get("event") || g.event_id === params.get("event"),
+      (g) => !params.get("event") || params.getAll("event").includes(g.event_id),
     );
     scoped = scoped.filter(
       (g) =>

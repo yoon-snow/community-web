@@ -322,14 +322,28 @@ export function AdminGuests() {
   const [page, setPage] = useState(0);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const [event, setEvent] = useState(params.get("event") || "");
+  const { boot } = useApp();
+  const today = seoulDate();
+  const workouts = (boot.events as ClubEvent[]).filter(e =>
+    (e.status === "scheduled" || (e.status === "completed" && seoulDate(e.starts_at) === today)) &&
+    !["holiday", "social", "event", "other"].includes(e.kind) && seoulDate(e.starts_at) >= today
+  ).sort((a,b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
+  const nextDay = workouts[0] && seoulDate(workouts[0].starts_at);
+  const dailyWorkouts = workouts.filter(e => seoulDate(e.starts_at) === nextDay);
+  const [selection, setEvent] = useState<string | null>(params.get("event"));
+  const event = selection ?? (dailyWorkouts.length > 1 ? "daily" : workouts[0]?.id || "");
+  const workout = (boot.events as ClubEvent[]).find(e => e.id === event);
+  const dailyLabel = nextDay && formatDate(nextDay + "T12:00:00+09:00") + " 운동 전체";
+  const [previewImage, setPreviewImage] = useState(false);
   const application = params.get("application");
   const selected = useResource(
     application ? `admin/guests/${application}` : null,
   );
   const [exporting, setExporting] = useState(false);
-  const { boot } = useApp();
-  const query = `status=${status}&from=${from}&to=${to}&event=${event}`;
+  const filters = new URLSearchParams({status, from, to});
+  if (event === "daily") dailyWorkouts.forEach(e => filters.append("event", e.id));
+  else if (event) filters.set("event", event);
+  const query = filters.toString();
   const resource = useResource(`admin/guests?${query}&page=${page}`);
   return (
     <>
@@ -369,10 +383,15 @@ export function AdminGuests() {
           { value: "paid", label: "입금완료" },
         ]}
       />
+      <div className="button-row">
+        <button className="button secondary" onClick={() => setPreviewImage(true)}>명단 이미지 미리보기</button>
+        <Link className="text-button" href="/preview/apply?role=guest">게스트 신청 화면 보기</Link>
+      </div>
+      {previewImage && <ExportSheet resource="guests" query={query} previewOnly close={() => setPreviewImage(false)} />}
       <details className="filter-details">
         <summary>
           <SlidersHorizontal size={15} />
-          기간·일정 필터
+          {event === "daily" ? dailyLabel : workout ? formatDate(workout.starts_at) + " · " + workout.title : "모든 일정"} · 필터
         </summary>
         <div className="filter-row">
           <input
@@ -404,6 +423,7 @@ export function AdminGuests() {
           }}
         >
           <option value="">모든 일정</option>
+          {dailyWorkouts.length > 1 && <option value="daily">{dailyLabel}</option>}
           {boot.events.map((e: ClubEvent) => (
             <option key={e.id} value={e.id}>
               {formatDate(e.starts_at)} {e.title}

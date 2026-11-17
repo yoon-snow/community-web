@@ -1484,9 +1484,33 @@ export function NotificationsScreen() {
   );
 }
 
+function ArchiveCalendar({month, rows, day, select}: {
+  month: string; rows: ClubRow[]; day: string; select: (day: string) => void;
+}) {
+  const [year, m] = month.split("-").map(Number);
+  const counts = new Map<string, number>();
+  for (const row of rows) counts.set(row.filmed_on, (counts.get(row.filmed_on) || 0) + 1);
+  return <div className="archive-grid" aria-label="촬영일 달력">
+    {["일","월","화","수","목","금","토"].map(w => <small key={w}>{w}</small>)}
+    {Array.from({length: new Date(year, m - 1, 1).getDay()}, (_, i) => <span key={`empty-${i}`} />)}
+    {Array.from({length: new Date(year, m, 0).getDate()}, (_, i) => {
+      const date = month + "-" + String(i + 1).padStart(2, "0");
+      const count = counts.get(date) || 0;
+      return <button key={date} disabled={!count} aria-pressed={day === date}
+        aria-label={`${date}, 영상 기록 ${count}건`} onClick={() => select(day === date ? "" : date)}>
+        {i + 1}{count > 0 && <small>{count}건</small>}
+      </button>;
+    })}
+  </div>;
+}
+
 export function VideosScreen({ admin = false }: { admin?: boolean }) {
-  const { boot } = useApp();
+  const { boot, link } = useApp();
+  const [view, setView] = useState("list");
+  const [calendarMonth, setCalendarMonth] = useState(seoulDate().slice(0, 7));
+  const [day, setDay] = useState("");
   const [kind, setKind] = useState("all");
+  const [tag, setTag] = useState("");
   const [q, setQ] = useState("");
   const [year, setYear] = useState("");
   const [month, setMonth] = useState("");
@@ -1496,9 +1520,14 @@ export function VideosScreen({ admin = false }: { admin?: boolean }) {
   const [edit, setEdit] = useState<ClubRow | boolean>(false);
   const resource = useResource(
     boot.member
-      ? `videos?kind=${kind}&q=${encodeURIComponent(q)}&year=${year}&month=${month}&event=${event}&page=${page}`
+      ? `videos?kind=${kind}&tag=${encodeURIComponent(tag)}&q=${encodeURIComponent(q)}&view=${view}&year=${view === "calendar" ? calendarMonth.slice(0,4) : year}&month=${view === "calendar" ? calendarMonth.slice(5) : month}&event=${event}&page=${page}`
       : null,
   );
+  function shiftMonth(offset: number) {
+    const [y, m] = calendarMonth.split("-").map(Number);
+    setCalendarMonth(new Date(Date.UTC(y, m - 1 + offset, 1)).toISOString().slice(0, 7));
+    setDay("");
+  }
   if (!boot.member)
     return (
       <>
@@ -1524,6 +1553,19 @@ export function VideosScreen({ admin = false }: { admin?: boolean }) {
           ) : null
         }
       />
+      <nav className="archive-views" aria-label="영상 보기 방식">
+        {[["list", "리스트"], ["calendar", "달력"], ["cards", "카드"]].map(([key, label]) => (
+          <button key={key} aria-pressed={view === key} onClick={() => {
+            if (key === "calendar" && view !== key) {
+              const latest = resource.data?.rows?.[0]?.filmed_on || seoulDate();
+              setCalendarMonth((year || latest.slice(0,4)) + "-" + (month || latest.slice(5,7)));
+              setDay("");
+            }
+            setView(key);
+            setPage(0);
+          }}>{label}</button>
+        ))}
+      </nav>
       <label className="search-box">
         <Search size={19} />
         <input
@@ -1532,6 +1574,7 @@ export function VideosScreen({ admin = false }: { admin?: boolean }) {
           value={q}
           onChange={(e) => {
             setQ(e.target.value);
+            setDay("");
             setPage(0);
           }}
         />
@@ -1540,6 +1583,7 @@ export function VideosScreen({ admin = false }: { admin?: boolean }) {
         value={kind}
         onChange={(v) => {
           setKind(v);
+            setDay("");
           setPage(0);
         }}
         items={[
@@ -1550,7 +1594,15 @@ export function VideosScreen({ admin = false }: { admin?: boolean }) {
           })),
         ]}
       />
+      <label className="field">
+        <span>영상 태그</span>
+        <select value={tag} onChange={e => {setTag(e.target.value); setPage(0); setDay("");}}>
+          <option value="">모든 태그</option>
+          {["연습&게임","게임데이","교류전","대회"].map(label => <option key={label}>{label}</option>)}
+        </select>
+      </label>
       <div className="filter-row">
+        {view !== "calendar" && <>
         <select
           aria-label="영상 연도"
           value={year}
@@ -1587,11 +1639,13 @@ export function VideosScreen({ admin = false }: { admin?: boolean }) {
             </option>
           ))}
         </select>
+        </>}
         <select
           aria-label="연결 일정"
           value={event}
           onChange={(e) => {
             setEvent(e.target.value);
+            setDay("");
             setPage(0);
           }}
         >
@@ -1603,13 +1657,35 @@ export function VideosScreen({ admin = false }: { admin?: boolean }) {
           ))}
         </select>
       </div>
+      {view === "calendar" && (
+        <div className="archive-month">
+          <button aria-label="이전 달" onClick={() => shiftMonth(-1)}>‹</button>
+          <input aria-label="영상 달력 월" type="month" value={calendarMonth} onChange={e => {
+            if (e.target.value) { setCalendarMonth(e.target.value); setDay(""); }
+          }} />
+          <button aria-label="다음 달" onClick={() => shiftMonth(1)}>›</button>
+        </div>
+      )}
       <Resource resource={resource}>
         {(d) => (
           <>
+            {view === "calendar" && <ArchiveCalendar month={calendarMonth} rows={d.rows} day={day} select={setDay} />}
+            {view === "calendar" && day && <button className="text-button" onClick={() => setDay("")}>{day} · 이달 전체 보기</button>}
             {d.rows.length ? (
-              d.rows.map((v: ClubRow) => (
+              d.rows.filter((v: ClubRow) => view !== "calendar" || !day || day === v.filmed_on).map((v: ClubRow) => (
                 <div key={`${v.source || "videos"}:${v.id}`}>
-                  <VideoCard video={v} />
+                  {view === "cards" ? <VideoCard video={v} /> : (
+                    <article className="archive-list-item">
+                      <time dateTime={v.filmed_on}>{v.filmed_on}</time>
+                      <Link href={link(`/${v.source || "videos"}/${v.id}`)}>{v.title}</Link>
+                      <div className="archive-tags">
+                        {v.entry_type === "playlist" && <Badge>재생목록</Badge>}
+                        {["교류전","게임데이","연습&게임","대회"].includes(v.description?.split("\n")[0]) ? (
+                          <button onClick={() => { setTag(v.description.split("\n")[0]); setPage(0); }}>{v.description.split("\n")[0]}</button>
+                        ) : <Badge tone={v.kind}>{videoCategories[v.kind]}</Badge>}
+                      </div>
+                    </article>
+                  )}
                   {admin && (
                     <button className="text-button" onClick={() => setEdit(v)}>
                       영상 수정
@@ -1622,12 +1698,12 @@ export function VideosScreen({ admin = false }: { admin?: boolean }) {
                 영상이 등록되면 여기에서 볼 수 있어요.
               </Empty>
             )}
-            <Pagination
+            {view !== "calendar" && <Pagination
               page={page}
               total={d.total}
               size={24}
               setPage={setPage}
-            />
+            />}
           </>
         )}
       </Resource>
