@@ -512,8 +512,17 @@ export function RosterScreen() {
   );
 }
 
-type GuestPreviewRow = { name: string; position: string; birth_date?: string; experience?: string };
-async function loadGuestRows(filters: string, boot: ClubRow, detailed = false): Promise<GuestPreviewRow[]> {
+type GuestPreviewRow = {
+  name: string;
+  position: string;
+  birth_date?: string;
+  experience?: string;
+};
+async function loadGuestRows(
+  filters: string,
+  boot: ClubRow,
+  detailed = false,
+): Promise<GuestPreviewRow[]> {
   let rows;
   if (boot.preview) {
     const { previewResource } = await import("@/lib/club-preview");
@@ -527,7 +536,10 @@ async function loadGuestRows(filters: string, boot: ClubRow, detailed = false): 
       (g: ClubRow) => ({
         name: g.answers?.name || g.guests?.name,
         position: g.answers?.position || g.guests?.position,
-        ...(detailed && { birth_date: g.answers?.birth_date, experience: g.answers?.experience }),
+        ...(detailed && {
+          birth_date: g.answers?.birth_date,
+          experience: g.answers?.experience,
+        }),
       }),
     );
   } else {
@@ -539,8 +551,7 @@ async function loadGuestRows(filters: string, boot: ClubRow, detailed = false): 
     if (!result.ok) throw new Error("명단을 불러오지 못했어요.");
     rows = await result.json();
   }
-  if (!rows.length)
-    throw new Error("선택한 조건에 해당하는 신청이 없어요.");
+  if (!rows.length) throw new Error("선택한 조건에 해당하는 신청이 없어요.");
   if (rows.length > 500)
     throw new Error(
       "이미지는 한 번에 500명까지 만들 수 있어요. 기간을 좁혀주세요.",
@@ -550,17 +561,23 @@ async function loadGuestRows(filters: string, boot: ClubRow, detailed = false): 
 
 async function shareableImages(rows: GuestPreviewRow[]) {
   const { guestImages } = await import("./guest-share-image");
-  return guestImages(rows.map(({ name, position }) => ({ name, position })));
+  return guestImages(rows);
 }
 
-function GuestImagePreview({file, index}: {file: File; index: number}) {
+function GuestImagePreview({ file, index }: { file: File; index: number }) {
   const [url, setUrl] = useState("");
   useEffect(() => {
     const src = URL.createObjectURL(file);
     setUrl(src);
     return () => URL.revokeObjectURL(src);
   }, [file]);
-  return url ? <img className="guest-image-preview" src={url} alt={`게스트 명단 미리보기 ${index + 1}`} /> : null;
+  return url ? (
+    <img
+      className="guest-image-preview"
+      src={url}
+      alt={`게스트 명단 미리보기 ${index + 1}`}
+    />
+  ) : null;
 }
 
 export function ExportSheet({
@@ -589,145 +606,174 @@ export function ExportSheet({
     setDetails([]);
     setImages([]);
     loadGuestRows(query, boot, true)
-      .then(rows => {
+      .then((rows) => {
         if (!active) return [];
         setDetails(rows);
         return shareableImages(rows);
       })
-      .then(files => { if (active) setImages(files); })
-      .catch(e => { if (active) setError(e.message); })
-      .finally(() => { if (active) setBusy(false); });
-    return () => { active = false; };
+      .then((files) => {
+        if (active) setImages(files);
+      })
+      .catch((e) => {
+        if (active) setError(e.message);
+      })
+      .finally(() => {
+        if (active) setBusy(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [previewOnly, query, boot]);
   return (
-    <Modal title={previewOnly ? "게스트 명단 미리보기" : "내보내기"} close={close}>
-      {previewOnly && busy && <p role="status">명단 이미지를 준비하고 있어요.</p>}
+    <Modal
+      title={previewOnly ? "게스트 명단 미리보기" : "내보내기"}
+      close={close}
+    >
+      {previewOnly && busy && (
+        <p role="status">명단 이미지를 준비하고 있어요.</p>
+      )}
       {previewOnly && details.length > 0 && (
         <section className="card guest-review">
           <h2>운영진 확인용 · {details.length}명</h2>
-          <ul>{details.map((guest, index) => (
-            <li key={index}>
-              <strong>{guest.name || "이름 미입력"}</strong>
-              <span>{guest.position || "포지션 미정"}</span>
-              <small>생년월일 {guest.birth_date || "미입력"} · 경력 {guest.experience || "미입력"}</small>
-            </li>
-          ))}</ul>
+          <ul>
+            {details.map((guest, index) => (
+              <li key={index}>
+                <strong>{guest.name || "이름 미입력"}</strong>
+                <span>{guest.position || "포지션 미정"}</span>
+                <small>
+                  생년월일 {guest.birth_date || "미입력"} · 경력{" "}
+                  {guest.experience || "미입력"}
+                </small>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
-      {!previewOnly && <>
-      <p className="hint">
-        관리자 전용 파일입니다. 개인정보 취급에 주의해주세요.
-      </p>
-      <div className="export-options">
-        {[
-          { value: "xlsx", label: "Excel (.xlsx)" },
-          { value: "csv", label: "CSV (.csv)" },
-          ...(resource === "guests"
-            ? [{ value: "image", label: "공유 이미지 (.png)" }]
-            : []),
-        ].map((i) => (
-          <label key={i.value}>
+      {!previewOnly && (
+        <>
+          <p className="hint">
+            관리자 전용 파일입니다. 개인정보 취급에 주의해주세요.
+          </p>
+          <div className="export-options">
+            {[
+              { value: "xlsx", label: "Excel (.xlsx)" },
+              { value: "csv", label: "CSV (.csv)" },
+              ...(resource === "guests"
+                ? [{ value: "image", label: "공유 이미지 (.png)" }]
+                : []),
+            ].map((i) => (
+              <label key={i.value}>
+                <input
+                  type="radio"
+                  value={i.value}
+                  checked={format === i.value}
+                  onChange={() => {
+                    setFormat(i.value);
+                    setImages([]);
+                  }}
+                />
+                <Download size={22} />
+                <strong>{i.label}</strong>
+              </label>
+            ))}
+          </div>
+          <label className="checkbox">
             <input
-              type="radio"
-              value={i.value}
-              checked={format === i.value}
-              onChange={() => {
-                setFormat(i.value);
+              type="checkbox"
+              checked={filtered}
+              onChange={(e) => {
+                setFiltered(e.target.checked);
                 setImages([]);
               }}
             />
-            <Download size={22} />
-            <strong>{i.label}</strong>
+            <span>현재 필터 포함</span>
           </label>
-        ))}
-      </div>
-      <label className="checkbox">
-        <input
-          type="checkbox"
-          checked={filtered}
-          onChange={(e) => {
-            setFiltered(e.target.checked);
-            setImages([]);
-          }}
-        />
-        <span>현재 필터 포함</span>
-      </label>
-      </>}
+        </>
+      )}
       {error && (
         <p className="form-error" role="alert">
           {error}
         </p>
       )}
-      {!previewOnly && <button
-        className="button primary full"
-        disabled={busy}
-        onClick={async () => {
-          setBusy(true);
-          setError("");
-          try {
-            if (format === "image") {
-              setImages(await shareableImages(await loadGuestRows(filtered ? query : "", boot)));
-              return;
-            }
-            if (boot.preview)
-              throw new Error(
-                "미리보기에는 실제 개인정보 파일을 생성하지 않습니다.",
+      {!previewOnly && (
+        <button
+          className="button primary full"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            setError("");
+            try {
+              if (format === "image") {
+                setImages(
+                  await shareableImages(
+                    await loadGuestRows(filtered ? query : "", boot, true),
+                  ),
+                );
+                return;
+              }
+              if (boot.preview)
+                throw new Error(
+                  "미리보기에는 실제 개인정보 파일을 생성하지 않습니다.",
+                );
+              const response = await fetch(
+                `/api/club/admin/export?resource=${resource}&format=${format}${filtered && query ? "&" + query : ""}`,
+                { cache: "no-store" },
               );
-            const response = await fetch(
-              `/api/club/admin/export?resource=${resource}&format=${format}${filtered && query ? "&" + query : ""}`,
-              { cache: "no-store" },
-            );
-            if (!response.ok) throw new Error((await response.json()).error);
-            downloadBlob(
-              await response.blob(),
-              `spotlight-${resource}.${format}`,
-            );
-            close();
-          } catch (e) {
-            setError((e as Error).message);
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        {busy ? "파일 생성 중…" : "파일 생성"}
-      </button>}
+              if (!response.ok) throw new Error((await response.json()).error);
+              downloadBlob(
+                await response.blob(),
+                `spotlight-${resource}.${format}`,
+              );
+              close();
+            } catch (e) {
+              setError((e as Error).message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {busy ? "파일 생성 중…" : "파일 생성"}
+        </button>
+      )}
       {format === "image" && (
         <p className="hint">
-          공유 이미지에는 이름과 희망 포지션만 표시합니다. 휴대폰 공유 메뉴에서
-          카카오톡과 임원진 채팅방을 선택하세요.
+          운영진 공유 이미지에는 이름·희망 포지션·생년월일·배구 경력을
+          표시합니다. 휴대폰 공유 메뉴에서 카카오톡과 임원진 채팅방을
+          선택하세요.
         </p>
       )}
-      {previewOnly && images.length > 0 && <h3>공유용 이미지 · 이름과 포지션</h3>}
+      {previewOnly && images.length > 0 && (
+        <h3>운영진 공유용 이미지 · 생년월일·경력 포함</h3>
+      )}
       {images.map((file, i) => (
         <div key={file.name}>
           <GuestImagePreview file={file} index={i} />
           <div className="button-row">
-          <button
-            className="button secondary"
-            onClick={() => downloadBlob(file, file.name)}
-          >
-            이미지 저장 {i + 1}
-          </button>
-          <button
-            className="button secondary"
-            onClick={async () => {
-              try {
-                if (!navigator.canShare?.({ files: [file] })) {
-                  setError(
-                    "이 브라우저는 파일 공유를 지원하지 않아요. 이미지를 저장한 뒤 카카오톡에 첨부해주세요.",
-                  );
-                  return;
+            <button
+              className="button secondary"
+              onClick={() => downloadBlob(file, file.name)}
+            >
+              이미지 저장 {i + 1}
+            </button>
+            <button
+              className="button secondary"
+              onClick={async () => {
+                try {
+                  if (!navigator.canShare?.({ files: [file] })) {
+                    setError(
+                      "이 브라우저는 파일 공유를 지원하지 않아요. 이미지를 저장한 뒤 카카오톡에 첨부해주세요.",
+                    );
+                    return;
+                  }
+                  await navigator.share({ files: [file] });
+                } catch (e) {
+                  if ((e as Error).name !== "AbortError")
+                    setError("공유하지 못했어요. 이미지 저장을 이용해주세요.");
                 }
-                await navigator.share({ files: [file] });
-              } catch (e) {
-                if ((e as Error).name !== "AbortError")
-                  setError("공유하지 못했어요. 이미지 저장을 이용해주세요.");
-              }
-            }}
-          >
-            이미지 공유 {i + 1}
-          </button>
+              }}
+            >
+              이미지 공유 {i + 1}
+            </button>
           </div>
         </div>
       ))}

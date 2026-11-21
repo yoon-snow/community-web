@@ -59,3 +59,9 @@ Local Next.js 16.4.3 / Node 24. Source reference read through Google Drive. No p
 - Added API test for October + paid Export filters, later-row column preservation and spreadsheet formula escaping. Existing member/guest Export denial and share-safe roster tests remain passing.
 - Added mobile tests for analytics headings/overflow and month + paid CSV download parameters; real phone and production database integration remain separate checks.
 - Mobile browser regression: all 60 tests passed across iPhone 13 / Pixel 7 Chromium emulation, including the new analytics and filtered CSV flow. Reviewed the analytics screenshot; no horizontal overflow. This is not physical-device testing.
+
+## 2026-11-21 usability update
+- Guest application now uses two steps; mobile regression verifies back-navigation persistence, multiple positions, submission and renewed consent after a notice version changes.
+- Admin-only guest export images include birth date and volleyball experience, using the authorized detailed preview endpoint. Public/member roster projections remain unchanged.
+- Shared dark surfaces, form controls and selected bottom tabs have stronger contrast. Mobile Chromium checks covered guest/member homes, admin home and inline roster images; physical-device sharing is not simulated.
+- Validation: 112 unit/API tests, production build, two focused mobile flow regressions.

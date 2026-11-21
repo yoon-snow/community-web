@@ -2766,3 +2766,30 @@ button.emergency { width: 100%; text-align: left; }
 .guest-review li { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 10px; padding-block:12px; overflow-wrap:anywhere; }
 .guest-review li + li { border-top:1px solid var(--border); }
 .guest-review li small { width:100%; color:var(--secondary-ink); }
+
+/* Shared contrast and navigation hierarchy across all three roles. */
+[data-theme="dark"] {
+  --border: #465b75;
+  --secondary-ink: #c5d0df;
+}
+[data-theme="dark"] .app-shell :is(.card, .menu-list, .task-list, .list-card, .notice-card, .board-list-row, .guest-review, .calendar) {
+  background: #192c45;
+  border: 1px solid #465b75;
+  box-shadow: 0 4px 14px #0003;
+}
+[data-theme="dark"] .app-shell :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  background: #0e1d31;
+  border-color: #657b98;
+  color: #f3f6fb;
+}
+[data-theme="dark"] .app-shell :is(input, textarea)::placeholder { color: #b4c2d5; opacity: 1; }
+[data-theme="dark"] .app-shell :is(.menu-list, .task-list) > * + * { border-top: 1px solid #465b75; }
+.app-shell .bottom-nav { gap: 4px; box-shadow: 0 -4px 20px #08142618; }
+.app-shell .bottom-nav a { border-radius: 14px; padding: 5px 0; }
+.app-shell .bottom-nav a.active { background: #0f1f3d; color: #fff; }
+.app-shell .bottom-nav a.active > span { background: transparent; color: #e4c968; }
+.app-shell .bottom-nav small { font-size: 11px; white-space: nowrap; }
+[data-theme="dark"] .app-shell .bottom-nav { background: #101f33; border-top: 1px solid #657b98; }
+[data-theme="dark"] .app-shell .bottom-nav a { color: #c5d0df; }
+[data-theme="dark"] .app-shell .bottom-nav a.active { background: #e4c968; color: #0f1f3d; }
+[data-theme="dark"] .app-shell .bottom-nav a.active > span { color: #0f1f3d; }

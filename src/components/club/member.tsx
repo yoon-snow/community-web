@@ -111,6 +111,11 @@ export function ApplicationForm({
     "안내 및 동의",
     "입금 및 확인",
   ];
+  const visibleSteps = membership ? steps : ["정보 입력", "안내 확인·접수"];
+  const visibleStep = membership ? step : step === 0 ? 0 : 1;
+  const finalStep = membership ? step === 4 : step === 3;
+  const showStep = (n: number) =>
+    membership ? step === n : step === 0 ? n <= 2 : n >= 3;
   const event = boot.events.find((e: ClubEvent) => e.id === values.event_id);
   const guidance = useResource(
     membership
@@ -154,12 +159,13 @@ export function ApplicationForm({
     notices: membership ? {} : noticeVersions(confirmedNotices),
     questions: membership ? {} : questionVersions,
   });
+  const lastAgreementSignature = useRef(agreementSignature);
   useEffect(() => {
     if (
       (membership || guidance.data) &&
-      agreements &&
-      agreements.signature !== agreementSignature
+      lastAgreementSignature.current !== agreementSignature
     ) {
+      lastAgreementSignature.current = agreementSignature;
       setAgreements(null);
       setValues((v) => ({
         ...v,
@@ -186,7 +192,7 @@ export function ApplicationForm({
         next[key] = fd.has(key);
     if (fd.has("paid_answer"))
       next.self_reported_paid = fd.get("paid_answer") === "yes";
-    if (!membership && step === 1)
+    if (!membership && step === 0)
       next.position = fd.getAll("position").join(", ");
     setValues(next);
     return next;
@@ -196,17 +202,26 @@ export function ApplicationForm({
     setError("");
     if (!form.current?.reportValidity()) return;
     const latest = readForm();
-    if (!membership && step >= 2) {
-      const selected = boot.events.find((e: ClubEvent) => e.id === latest.event_id);
+    if (!membership) {
+      const selected = boot.events.find(
+        (e: ClubEvent) => e.id === latest.event_id,
+      );
       if (selected && guestDeadline(selected.starts_at) <= Date.now()) {
-        setError("운동 시작 1시간 전이라 신청이 마감됐어요. 다른 일정을 선택해주세요.");
+        setError(
+          "운동 시작 1시간 전이라 신청이 마감됐어요. 다른 일정을 선택해주세요.",
+        );
         setAgreements(null);
-        setValues((v) => ({ ...v, event_id: "", rules_consent: false, notice_consent: false }));
-        setStep(2);
+        setValues((v) => ({
+          ...v,
+          event_id: "",
+          rules_consent: false,
+          notice_consent: false,
+        }));
+        setStep(0);
         return;
       }
     }
-    if (!membership && step === 1 && !latest.position) {
+    if (!membership && step === 0 && !latest.position) {
       setError("희망 포지션을 하나 이상 선택해주세요.");
       return;
     }
@@ -214,20 +229,20 @@ export function ApplicationForm({
       setError("참가 안내를 불러온 후 다시 시도해주세요.");
       return;
     }
-    if (step === 3)
-      setAgreements({
-        signature: agreementSignature,
-        rules: versions,
-        notices: membership ? {} : noticeVersions(confirmedNotices),
-        questions: membership ? {} : questionVersions,
-      });
-    if (step === 4 && !agreements) {
+    const currentAgreements = {
+      signature: agreementSignature,
+      rules: versions,
+      notices: membership ? {} : noticeVersions(confirmedNotices),
+      questions: membership ? {} : questionVersions,
+    };
+    if (step === 3) setAgreements(currentAgreements);
+    if (membership && step === 4 && !agreements) {
       setError("공지와 회칙을 다시 확인하고 동의해주세요.");
       setStep(3);
       return;
     }
-    if (step < 4) {
-      setStep(step + 1);
+    if (!finalStep) {
+      setStep(membership ? step + 1 : 3);
       return;
     }
     setBusy(true);
@@ -239,11 +254,11 @@ export function ApplicationForm({
       );
       const data = {
         ...latest,
-        rule_versions: agreements!.rules,
+        rule_versions: (membership ? agreements! : currentAgreements).rules,
         ...(!membership
           ? {
-              announcement_versions: agreements!.notices,
-              question_versions: agreements!.questions,
+              announcement_versions: currentAgreements.notices,
+              question_versions: currentAgreements.questions,
             }
           : {}),
         extra_answers: extras,
@@ -468,17 +483,20 @@ export function ApplicationForm({
       />
       <PageTitle
         eyebrow={membership ? "JOIN OUR TEAM" : "JOIN THE COURT"}
-        title={steps[step]}
-        description={`${step + 1} / 5 · ${membership ? "함께할 준비를 시작해요" : "계정 없이 편하게 신청하세요"}`}
+        title={visibleSteps[visibleStep]}
+        description={`${visibleStep + 1} / ${visibleSteps.length} · ${membership ? "함께할 준비를 시작해요" : "계정 없이 편하게 신청하세요"}`}
       />
       {!membership && step === 0 && (
         <Link className="button secondary full" href={link("/receipt")}>
           이미 신청하셨나요? 내 신청 조회
         </Link>
       )}
-      <div className="progress" aria-label={`${step + 1}/5 단계`}>
-        {steps.map((s, i) => (
-          <span key={s} className={i <= step ? "filled" : ""} />
+      <div
+        className="progress"
+        aria-label={`${visibleStep + 1}/${visibleSteps.length} 단계`}
+      >
+        {visibleSteps.map((s, i) => (
+          <span key={s} className={i <= visibleStep ? "filled" : ""} />
         ))}
       </div>
       {!boot.acceptingApplications && (
@@ -487,21 +505,13 @@ export function ApplicationForm({
           미리 확인할 수 있지만, 운영 설정이 완료되기 전에는 접수할 수 없어요.
         </div>
       )}
-      {!membership && step === 0 && (
-        <details className="card prose form-notices">
-          <summary>공지 및 필독사항 확인하기</summary>
-          <Resource resource={guidance}>
-            {(d) => <GuestNotices notices={d.announcements} />}
-          </Resource>
-        </details>
-      )}
       <form
         key={step}
         ref={form}
         className="form application-form"
         onSubmit={forward}
       >
-        {step === 0 && (
+        {showStep(0) && (
           <>
             <Field
               label={label("name", "이름")}
@@ -557,7 +567,7 @@ export function ApplicationForm({
             />
           </>
         )}
-        {step === 1 && (
+        {showStep(1) && (
           <>
             {membership ? (
               <Field
@@ -638,7 +648,7 @@ export function ApplicationForm({
             ))}
           </>
         )}
-        {step === 2 &&
+        {showStep(2) &&
           (membership ? (
             <>
               <div className="card prose">
@@ -705,7 +715,7 @@ export function ApplicationForm({
               </p>
             </>
           ))}
-        {step === 3 && (
+        {showStep(3) && (
           <>
             <div className="card prose">
               <h2>신청 전 꼭 읽어주세요</h2>
@@ -771,11 +781,17 @@ export function ApplicationForm({
                 required
                 checked={Boolean(values.rules_consent)}
                 onChange={(e) =>
-                  setValues((v) => ({ ...v, rules_consent: e.target.checked, ...(!membership && { notice_consent: e.target.checked }) }))
+                  setValues((v) => ({
+                    ...v,
+                    rules_consent: e.target.checked,
+                    ...(!membership && { notice_consent: e.target.checked }),
+                  }))
                 }
               />
               <span>
-                {membership ? "운동 일정과 참가 안내를 확인하고 동의합니다. (필수)" : "운동 일정과 공지·필독사항, 참가 안내를 확인하고 동의합니다. (필수)"}
+                {membership
+                  ? "운동 일정과 참가 안내를 확인하고 동의합니다. (필수)"
+                  : "운동 일정과 공지·필독사항, 참가 안내를 확인하고 동의합니다. (필수)"}
                 {hint("rules_consent") && (
                   <small className="micro">{hint("rules_consent")}</small>
                 )}
@@ -795,7 +811,7 @@ export function ApplicationForm({
                 type="checkbox"
                 name="privacy_consent"
                 required
-                defaultChecked={values.privacy_consent}
+                checked={Boolean(values.privacy_consent)} onChange={(e) => setValues((v) => ({ ...v, privacy_consent: e.target.checked }))}
               />
               <span>
                 {label(
@@ -812,7 +828,7 @@ export function ApplicationForm({
                 type="checkbox"
                 name="photo_consent"
                 required
-                defaultChecked={values.photo_consent}
+                checked={Boolean(values.photo_consent)} onChange={(e) => setValues((v) => ({ ...v, photo_consent: e.target.checked }))}
               />
               <span>
                 {label(
@@ -826,7 +842,7 @@ export function ApplicationForm({
             </label>
           </>
         )}
-        {step === 4 && (
+        {showStep(4) && (
           <>
             <div className="bank-card">
               <span>입금 계좌</span>
@@ -891,7 +907,7 @@ export function ApplicationForm({
                 type="checkbox"
                 name="fee_acknowledgement"
                 required
-                defaultChecked={values.fee_acknowledgement}
+                checked={Boolean(values.fee_acknowledgement)} onChange={(e) => setValues((v) => ({ ...v, fee_acknowledgement: e.target.checked }))}
               />
               <span>
                 {label(
@@ -918,7 +934,7 @@ export function ApplicationForm({
               disabled={busy}
               onClick={() => {
                 readForm();
-                setStep(step - 1);
+                setStep(membership ? step - 1 : 0);
               }}
             >
               이전
@@ -926,11 +942,11 @@ export function ApplicationForm({
           )}
           <button
             className="button primary"
-            disabled={busy || (step === 4 && !boot.acceptingApplications)}
+            disabled={busy || (finalStep && !boot.acceptingApplications)}
           >
             {busy ? (
               "접수 중…"
-            ) : step === 4 ? (
+            ) : finalStep ? (
               "신청 완료"
             ) : (
               <>
@@ -1483,24 +1499,47 @@ export function NotificationsScreen() {
   );
 }
 
-function ArchiveCalendar({month, rows, day, select}: {
-  month: string; rows: ClubRow[]; day: string; select: (day: string) => void;
+function ArchiveCalendar({
+  month,
+  rows,
+  day,
+  select,
+}: {
+  month: string;
+  rows: ClubRow[];
+  day: string;
+  select: (day: string) => void;
 }) {
   const [year, m] = month.split("-").map(Number);
   const counts = new Map<string, number>();
-  for (const row of rows) counts.set(row.filmed_on, (counts.get(row.filmed_on) || 0) + 1);
-  return <div className="archive-grid" aria-label="촬영일 달력">
-    {["일","월","화","수","목","금","토"].map(w => <small key={w}>{w}</small>)}
-    {Array.from({length: new Date(year, m - 1, 1).getDay()}, (_, i) => <span key={`empty-${i}`} />)}
-    {Array.from({length: new Date(year, m, 0).getDate()}, (_, i) => {
-      const date = month + "-" + String(i + 1).padStart(2, "0");
-      const count = counts.get(date) || 0;
-      return <button key={date} disabled={!count} aria-pressed={day === date}
-        aria-label={`${date}, 영상 기록 ${count}건`} onClick={() => select(day === date ? "" : date)}>
-        {i + 1}{count > 0 && <small>{count}건</small>}
-      </button>;
-    })}
-  </div>;
+  for (const row of rows)
+    counts.set(row.filmed_on, (counts.get(row.filmed_on) || 0) + 1);
+  return (
+    <div className="archive-grid" aria-label="촬영일 달력">
+      {["일", "월", "화", "수", "목", "금", "토"].map((w) => (
+        <small key={w}>{w}</small>
+      ))}
+      {Array.from({ length: new Date(year, m - 1, 1).getDay() }, (_, i) => (
+        <span key={`empty-${i}`} />
+      ))}
+      {Array.from({ length: new Date(year, m, 0).getDate() }, (_, i) => {
+        const date = month + "-" + String(i + 1).padStart(2, "0");
+        const count = counts.get(date) || 0;
+        return (
+          <button
+            key={date}
+            disabled={!count}
+            aria-pressed={day === date}
+            aria-label={`${date}, 영상 기록 ${count}건`}
+            onClick={() => select(day === date ? "" : date)}
+          >
+            {i + 1}
+            {count > 0 && <small>{count}건</small>}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 export function VideosScreen({ admin = false }: { admin?: boolean }) {
@@ -1519,12 +1558,14 @@ export function VideosScreen({ admin = false }: { admin?: boolean }) {
   const [edit, setEdit] = useState<ClubRow | boolean>(false);
   const resource = useResource(
     boot.member
-      ? `videos?kind=${kind}&tag=${encodeURIComponent(tag)}&q=${encodeURIComponent(q)}&view=${view}&year=${view === "calendar" ? calendarMonth.slice(0,4) : year}&month=${view === "calendar" ? calendarMonth.slice(5) : month}&event=${event}&page=${page}`
+      ? `videos?kind=${kind}&tag=${encodeURIComponent(tag)}&q=${encodeURIComponent(q)}&view=${view}&year=${view === "calendar" ? calendarMonth.slice(0, 4) : year}&month=${view === "calendar" ? calendarMonth.slice(5) : month}&event=${event}&page=${page}`
       : null,
   );
   function shiftMonth(offset: number) {
     const [y, m] = calendarMonth.split("-").map(Number);
-    setCalendarMonth(new Date(Date.UTC(y, m - 1 + offset, 1)).toISOString().slice(0, 7));
+    setCalendarMonth(
+      new Date(Date.UTC(y, m - 1 + offset, 1)).toISOString().slice(0, 7),
+    );
     setDay("");
   }
   if (!boot.member)
@@ -1553,16 +1594,31 @@ export function VideosScreen({ admin = false }: { admin?: boolean }) {
         }
       />
       <nav className="archive-views" aria-label="영상 보기 방식">
-        {[["list", "리스트"], ["calendar", "달력"], ["cards", "카드"]].map(([key, label]) => (
-          <button key={key} aria-pressed={view === key} onClick={() => {
-            if (key === "calendar" && view !== key) {
-              const latest = resource.data?.rows?.[0]?.filmed_on || seoulDate();
-              setCalendarMonth((year || latest.slice(0,4)) + "-" + (month || latest.slice(5,7)));
-              setDay("");
-            }
-            setView(key);
-            setPage(0);
-          }}>{label}</button>
+        {[
+          ["list", "리스트"],
+          ["calendar", "달력"],
+          ["cards", "카드"],
+        ].map(([key, label]) => (
+          <button
+            key={key}
+            aria-pressed={view === key}
+            onClick={() => {
+              if (key === "calendar" && view !== key) {
+                const latest =
+                  resource.data?.rows?.[0]?.filmed_on || seoulDate();
+                setCalendarMonth(
+                  (year || latest.slice(0, 4)) +
+                    "-" +
+                    (month || latest.slice(5, 7)),
+                );
+                setDay("");
+              }
+              setView(key);
+              setPage(0);
+            }}
+          >
+            {label}
+          </button>
         ))}
       </nav>
       <label className="search-box">
@@ -1582,7 +1638,7 @@ export function VideosScreen({ admin = false }: { admin?: boolean }) {
         value={kind}
         onChange={(v) => {
           setKind(v);
-            setDay("");
+          setDay("");
           setPage(0);
         }}
         items={[
@@ -1595,50 +1651,61 @@ export function VideosScreen({ admin = false }: { admin?: boolean }) {
       />
       <label className="field">
         <span>영상 태그</span>
-        <select value={tag} onChange={e => {setTag(e.target.value); setPage(0); setDay("");}}>
+        <select
+          value={tag}
+          onChange={(e) => {
+            setTag(e.target.value);
+            setPage(0);
+            setDay("");
+          }}
+        >
           <option value="">모든 태그</option>
-          {["연습&게임","게임데이","교류전","대회"].map(label => <option key={label}>{label}</option>)}
+          {["연습&게임", "게임데이", "교류전", "대회"].map((label) => (
+            <option key={label}>{label}</option>
+          ))}
         </select>
       </label>
       <div className="filter-row">
-        {view !== "calendar" && <>
-        <select
-          aria-label="영상 연도"
-          value={year}
-          onChange={(e) => {
-            setYear(e.target.value);
-            if (!e.target.value) setMonth("");
-            setPage(0);
-          }}
-        >
-          <option value="">모든 연도</option>
-          {Array.from(
-            { length: 6 },
-            (_, i) => new Date().getFullYear() - i,
-          ).map((y) => (
-            <option key={y}>{y}</option>
-          ))}
-        </select>
-        <select
-          aria-label="영상 월"
-          value={month}
-          onChange={(e) => {
-            setMonth(e.target.value);
-            if (e.target.value && !year)
-              setYear(String(new Date().getFullYear()));
-            setPage(0);
-          }}
-        >
-          <option value="">모든 월</option>
-          {Array.from({ length: 12 }, (_, i) =>
-            String(i + 1).padStart(2, "0"),
-          ).map((m) => (
-            <option key={m} value={m}>
-              {m}월
-            </option>
-          ))}
-        </select>
-        </>}
+        {view !== "calendar" && (
+          <>
+            <select
+              aria-label="영상 연도"
+              value={year}
+              onChange={(e) => {
+                setYear(e.target.value);
+                if (!e.target.value) setMonth("");
+                setPage(0);
+              }}
+            >
+              <option value="">모든 연도</option>
+              {Array.from(
+                { length: 6 },
+                (_, i) => new Date().getFullYear() - i,
+              ).map((y) => (
+                <option key={y}>{y}</option>
+              ))}
+            </select>
+            <select
+              aria-label="영상 월"
+              value={month}
+              onChange={(e) => {
+                setMonth(e.target.value);
+                if (e.target.value && !year)
+                  setYear(String(new Date().getFullYear()));
+                setPage(0);
+              }}
+            >
+              <option value="">모든 월</option>
+              {Array.from({ length: 12 }, (_, i) =>
+                String(i + 1).padStart(2, "0"),
+              ).map((m) => (
+                <option key={m} value={m}>
+                  {m}월
+                </option>
+              ))}
+            </select>
+          </>
+        )}
         <select
           aria-label="연결 일정"
           value={event}
@@ -1658,51 +1725,103 @@ export function VideosScreen({ admin = false }: { admin?: boolean }) {
       </div>
       {view === "calendar" && (
         <div className="archive-month">
-          <button aria-label="이전 달" onClick={() => shiftMonth(-1)}>‹</button>
-          <input aria-label="영상 달력 월" type="month" value={calendarMonth} onChange={e => {
-            if (e.target.value) { setCalendarMonth(e.target.value); setDay(""); }
-          }} />
-          <button aria-label="다음 달" onClick={() => shiftMonth(1)}>›</button>
+          <button aria-label="이전 달" onClick={() => shiftMonth(-1)}>
+            ‹
+          </button>
+          <input
+            aria-label="영상 달력 월"
+            type="month"
+            value={calendarMonth}
+            onChange={(e) => {
+              if (e.target.value) {
+                setCalendarMonth(e.target.value);
+                setDay("");
+              }
+            }}
+          />
+          <button aria-label="다음 달" onClick={() => shiftMonth(1)}>
+            ›
+          </button>
         </div>
       )}
       <Resource resource={resource}>
         {(d) => (
           <>
-            {view === "calendar" && <ArchiveCalendar month={calendarMonth} rows={d.rows} day={day} select={setDay} />}
-            {view === "calendar" && day && <button className="text-button" onClick={() => setDay("")}>{day} · 이달 전체 보기</button>}
+            {view === "calendar" && (
+              <ArchiveCalendar
+                month={calendarMonth}
+                rows={d.rows}
+                day={day}
+                select={setDay}
+              />
+            )}
+            {view === "calendar" && day && (
+              <button className="text-button" onClick={() => setDay("")}>
+                {day} · 이달 전체 보기
+              </button>
+            )}
             {d.rows.length ? (
-              d.rows.filter((v: ClubRow) => view !== "calendar" || !day || day === v.filmed_on).map((v: ClubRow) => (
-                <div key={`${v.source || "videos"}:${v.id}`}>
-                  {view === "cards" ? <VideoCard video={v} /> : (
-                    <article className="archive-list-item">
-                      <time dateTime={v.filmed_on}>{v.filmed_on}</time>
-                      <Link href={link(`/${v.source || "videos"}/${v.id}`)}>{v.title}</Link>
-                      <div className="archive-tags">
-                        {v.entry_type === "playlist" && <Badge>재생목록</Badge>}
-                        {["교류전","게임데이","연습&게임","대회"].includes(v.description?.split("\n")[0]) ? (
-                          <button onClick={() => { setTag(v.description.split("\n")[0]); setPage(0); }}>{v.description.split("\n")[0]}</button>
-                        ) : <Badge tone={v.kind}>{videoCategories[v.kind]}</Badge>}
-                      </div>
-                    </article>
-                  )}
-                  {admin && (
-                    <button className="text-button" onClick={() => setEdit(v)}>
-                      영상 수정
-                    </button>
-                  )}
-                </div>
-              ))
+              d.rows
+                .filter(
+                  (v: ClubRow) =>
+                    view !== "calendar" || !day || day === v.filmed_on,
+                )
+                .map((v: ClubRow) => (
+                  <div key={`${v.source || "videos"}:${v.id}`}>
+                    {view === "cards" ? (
+                      <VideoCard video={v} />
+                    ) : (
+                      <article className="archive-list-item">
+                        <time dateTime={v.filmed_on}>{v.filmed_on}</time>
+                        <Link href={link(`/${v.source || "videos"}/${v.id}`)}>
+                          {v.title}
+                        </Link>
+                        <div className="archive-tags">
+                          {v.entry_type === "playlist" && (
+                            <Badge>재생목록</Badge>
+                          )}
+                          {["교류전", "게임데이", "연습&게임", "대회"].includes(
+                            v.description?.split("\n")[0],
+                          ) ? (
+                            <button
+                              onClick={() => {
+                                setTag(v.description.split("\n")[0]);
+                                setPage(0);
+                              }}
+                            >
+                              {v.description.split("\n")[0]}
+                            </button>
+                          ) : (
+                            <Badge tone={v.kind}>
+                              {videoCategories[v.kind]}
+                            </Badge>
+                          )}
+                        </div>
+                      </article>
+                    )}
+                    {admin && (
+                      <button
+                        className="text-button"
+                        onClick={() => setEdit(v)}
+                      >
+                        영상 수정
+                      </button>
+                    )}
+                  </div>
+                ))
             ) : (
               <Empty icon={Play} title="아직 등록된 영상이 없어요">
                 영상이 등록되면 여기에서 볼 수 있어요.
               </Empty>
             )}
-            {view !== "calendar" && <Pagination
-              page={page}
-              total={d.total}
-              size={24}
-              setPage={setPage}
-            />}
+            {view !== "calendar" && (
+              <Pagination
+                page={page}
+                total={d.total}
+                size={24}
+                setPage={setPage}
+              />
+            )}
           </>
         )}
       </Resource>
@@ -1736,9 +1855,12 @@ export function VideoDetailScreen({
               <PageTitle title={v.title} />
               <div className="card prose">
                 <p>
-                  {videoCategories[v.kind]} · {formatDate(v.filmed_on + "T12:00:00+09:00")}
+                  {videoCategories[v.kind]} ·{" "}
+                  {formatDate(v.filmed_on + "T12:00:00+09:00")}
                   {v.date_source === "registered" ? " 등록" : " 촬영"}
-                  {v.entry_type === "playlist" && v.video_count != null && ` · 영상 ${v.video_count}개`}
+                  {v.entry_type === "playlist" &&
+                    v.video_count != null &&
+                    ` · 영상 ${v.video_count}개`}
                 </p>
                 <p style={{ whiteSpace: "pre-wrap" }}>
                   {v.description || "등록된 설명이 없습니다."}
